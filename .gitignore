@@ -1,0 +1,14 @@
+# PlatformIO
+.pio/
+
+# VS Code (PlatformIO IDE が生成する設定ファイル)
+# .vscode/extensions.json は PlatformIO の推奨拡張を記録するため追跡する
+.vscode/*
+!.vscode/extensions.json
+
+# Build artifacts
+*.o
+*.obj
+*.elf
+*.bin
+*.map
