@@ -593,6 +593,13 @@ void AppController::handleButtonEvent(input::ButtonEvent event,
     // ScreenAction は None が返るが、画面が Setup に変わっている。
     // 現在のプレイライフを setupLife に写さないと前回の設定値が残り、
     // ユーザーが前回の Setup で設定した値が表示されてしまう。
+    //
+    // startingLife ではなく現在の life を使う理由:
+    // Set Life は試合中のライフ修正が主目的であるため、ユーザーが
+    // 直近で見ていた現在値を起点にする方が直感的である。
+    // New Game 統合後（#15, ADR-25）は開始ライフを変更して
+    // 試合を始める唯一の経路でもあり、現在値からの調整が
+    // 最も自然な操作フローとなる。
     if (screenState_.screen() == Screen::Setup && prevScreen != Screen::Setup) {
         screenState_.setSetupLife(PlayerId::Top,
                                  state_.players[0].life);

@@ -150,6 +150,33 @@ void test_select_set_life_goes_to_setup_screen(void) {
                           static_cast<int>(ss.screen()));
 }
 
+// SetLife → Setup → ライフ変更 → 長押しで StartMatch: E2E フロー
+// issue #15 で NewGame が削除された後、開始ライフを変えて新しい試合を始める
+// 唯一の経路（Menu → SetLife → Setup → onLongPressB）を検証する。
+void test_set_life_to_setup_then_start_match(void) {
+    // 1. Menu から SetLife（インデックス 2）を選択して Setup 画面へ遷移する
+    openMenuAndMoveTo(2);
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(MenuItem::SetLife),
+                          static_cast<int>(ss.menuItem()));
+    ScreenAction action = ss.onSelect();
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(ScreenAction::None),
+                          static_cast<int>(action));
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(Screen::Setup),
+                          static_cast<int>(ss.screen()));
+
+    // 2. Setup 画面でライフプリセットを変更する（40 → 20）
+    ss.onNext();
+    TEST_ASSERT_EQUAL_UINT32(20, ss.setupLife(PlayerId::Top));
+    TEST_ASSERT_EQUAL_UINT32(20, ss.setupLife(PlayerId::Bottom));
+
+    // 3. 長押しで試合を開始する → StartMatch が返り Active に遷移する
+    action = ss.onLongPressB();
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(ScreenAction::StartMatch),
+                          static_cast<int>(action));
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(Screen::Active),
+                          static_cast<int>(ss.screen()));
+}
+
 // Rematch（インデックス 3）: 選択すると確認待ちになり、None を返す
 void test_select_rematch_enters_confirm(void) {
     openMenuAndMoveTo(3);
@@ -438,6 +465,7 @@ int main(int argc, char** argv) {
     RUN_TEST(test_select_resume_returns_to_active);
     RUN_TEST(test_select_history_goes_to_history_screen);
     RUN_TEST(test_select_set_life_goes_to_setup_screen);
+    RUN_TEST(test_set_life_to_setup_then_start_match);
     RUN_TEST(test_select_rematch_enters_confirm);
     RUN_TEST(test_confirm_rematch_returns_rematch_action);
     RUN_TEST(test_select_swap_sides_returns_swap_action);
