@@ -1,4 +1,4 @@
-// Phase 1 + Phase 2 Wave 1-2: ライフカウンター本体 -- アプリケーション制御層の実装
+// Phase 1 + Phase 2 + Phase 3: ライフカウンター本体 -- アプリケーション制御層の実装
 //
 // このファイルは docs/07-architecture.md の入力パイプラインに従って
 // ボタン入力 -> タッチ入力 -> ジェスチャー検出 -> ドメイン更新 -> 描画 の流れを制御する。
@@ -16,8 +16,6 @@
 #include "app_controller.hpp"
 
 #include <M5Unified.h>
-#include <driver/gpio.h>
-#include <esp_sleep.h>
 
 #include "domain/life_service.hpp"
 
@@ -45,43 +43,6 @@ constexpr uint32_t kVibLockMs        = 80;   // ロック: 重要な状態変更
 constexpr uint32_t kVibUnlockMs      = 40;   // ロック解除: 通常の確定と同等
 constexpr uint32_t kVibLockTouchMs   = 20;   // ロック中タッチ: 最短パルスで「無効」を通知
 
-// --- スリープ用 GPIO 定数 ---
-// M5Stack StopWatch の物理ボタン:
-//   KEYA = GPIO2（画面左）、KEYB = GPIO1（画面右）
-// M5Unified の M5.BtnA / M5.BtnB に対応する。
-// 根拠: M5Unified/src/M5Unified.cpp (board_M5StopWatch の btn_rawstate_bits):
-//   btn_rawstate_bits = ((!m5gfx::gpio_in(GPIO_NUM_2)) & 1)       // BtnA
-//                     | ((!m5gfx::gpio_in(GPIO_NUM_1)) & 1) << 1;  // BtnB
-// ボタンは GPIO 直結であり、M5IOE1（IO エキスパンダ）経由ではない。
-// ボタンの論理: プルアップ + スイッチ GND 接続。
-//   未押下 = HIGH (1)、押下 = LOW (0)。
-// したがって wakeup レベルは GPIO_INTR_LOW_LEVEL を指定する。
-constexpr gpio_num_t kGpioKeyA = GPIO_NUM_2;
-constexpr gpio_num_t kGpioKeyB = GPIO_NUM_1;
-
-// --- ライトスリープの安全復帰タイマー ---
-// GPIO 復帰が何らかの理由で効かなかった場合のフォールバック。
-// この時間が経過するとタイマー復帰するが、自動的に再スリープする。
-// ボタン押下（GPIO wakeup）以外では絶対に通常復帰しない。
-//
-// なぜ再スリープ上限を設けないのか:
-//   スリープ突入前に GPIO wakeup 設定（gpio_wakeup_enable /
-//   esp_sleep_enable_gpio_wakeup）の戻り値を検証し、失敗時はスリープ自体を
-//   abort する。したがって「GPIO wakeup が壊れた状態でスリープに入る」ケースは
-//   入口で防がれており、時間ベースの安全弁は不要。
-//   上限を設けると、GPIO が正常でも一定時間後に画面が点灯してしまい、
-//   イシュー #11 の症状が時間スケールを変えて残ることになる。
-//
-// なぜタイマー自体は必要か:
-//   万一 GPIO wakeup 設定は成功したがハードウェア側の問題で GPIO 割り込みが
-//   発生しない場合、タイマーがなければ完全にハングアップする。
-//   タイマーで定期的に起床して再スリープすることで、esp_light_sleep_start() の
-//   失敗やタイマー設定エラーを検出してループを抜ける機会を維持する。
-//
-// 注意: docs/09-power-and-tournament.md の自動減光タイマーとは別物。
-//   自動減光は UI 層の省電力表示制御であり、
-//   このタイマーはスリープからの脱出を保証するハードウェアレベルの安全策。
-constexpr uint64_t kSleepSafetyTimerUs = 5ULL * 60 * 1000 * 1000;  // 5 分（マイクロ秒）
 }  // namespace
 
 // ============================================================
@@ -128,8 +89,21 @@ const char* screenName(Screen s) {
 void AppController::begin() {
     renderer_.begin();
     haptics_.begin();
+    storage_.begin();
 
-    // Setup 画面から開始する。
+    // NVS に有効な試合状態があれば復元して Active 画面で再開する。
+    // 電源 OFF → ON でも前回の試合を即座に再開できる。
+    // 確認ダイアログは挟まない（電源 OFF 前の画面をそのまま復帰させる）。
+    if (storage_.hasValidState()) {
+        state_ = storage_.loadedState();
+        screenState_.enterActive();
+        renderer_.drawAll(state_);
+        renderer_.drawLockState(state_);
+        screenState_.consumeDirty();
+        return;
+    }
+
+    // NVS に有効な状態がない場合は Setup 画面から開始する。
     // Phase 1 では固定値 (40 ライフ) で即 Active に入っていたが、
     // Phase 2 では初期ライフの選択画面 (Setup) から開始する。
     // ScreenState のデフォルトライフ (40) が初期値として使われる。
@@ -139,52 +113,7 @@ void AppController::begin() {
 
 void AppController::update(uint32_t nowMs) {
     // ================================================================
-    // 0a. スリープ保留の処理
-    //     ScreenAction::Sleep を受けた時点ではボタンが押されているため、
-    //     そのままスリープに入るとボタンの LOW が wakeup ソースにヒットし
-    //     即座に復帰してしまう。ボタンが全て離されるまで保留する。
-    //     delay() を使わない非ブロッキング設計。
-    // ================================================================
-    if (sleepPending_) {
-        if (!M5.BtnA.isPressed() && !M5.BtnB.isPressed()) {
-            sleepPending_ = false;
-            enterLightSleep(nowMs);
-            // enterLightSleep() から戻ったら通常のループを続行する。
-            // 内部で画面再描画と入力リセットを済ませているので、
-            // このフレームの残りの処理は安全にスキップできる。
-            return;
-        }
-        // ボタンがまだ押されている: 保留を継続して通常ループへ進む。
-        // ボタン入力の更新は行うが、スリープ待ちでも操作を受け付ける。
-    }
-
-    // ================================================================
-    // 0b. スリープ復帰後の入力抑制
-    //     enterLightSleep() からの復帰直後、メニューのカーソルが Sleep の上にある。
-    //     復帰に使ったボタンを離した瞬間に LockToggleRequested → onSelect() が
-    //     発火し、カーソル位置の Sleep が再実行されてしまう。
-    //     両ボタンが離されるまで入力処理を全てスキップする。
-    //     delay() を使わない非ブロッキング設計（sleepPending_ と同じ流儀）。
-    // ================================================================
-    if (wakeInputSuppressed_) {
-        if (!M5.BtnA.isPressed() && !M5.BtnB.isPressed()) {
-            // 両ボタンが離された: 抑制を解除する。
-            // reset() で ButtonInput の内部状態をクリアし、抑制中に蓄積された
-            // 押下時刻やボタン状態を持ち越さない。
-            wakeInputSuppressed_ = false;
-            buttonInput_.reset();
-            Serial.println("SLEEP,input_unsuppressed");
-        } else {
-            // まだボタンが押されている: 入力を抑制しつつ振動管理だけ行う。
-            // ボタン・タッチ入力は処理しない。haptics_.tick() は毎フレーム
-            // 呼ばないとモーターが回りっぱなしになるため、ここで呼ぶ。
-            haptics_.tick(nowMs);
-            return;
-        }
-    }
-
-    // ================================================================
-    // 0c. 物理ボタンの処理（タッチより先に処理する）
+    // 0. 物理ボタンの処理（タッチより先に処理する）
     //     ButtonInput に毎ループ押下状態を渡し、イベントを取得する。
     //     docs/05: 画面から見て左が BtnA、右が BtnB。
     //     タッチロック中もボタンは有効（docs/05: 「タッチロック中もすべての
@@ -421,6 +350,11 @@ void AppController::update(uint32_t nowMs) {
             // 確定後のライフ値を描画する。
             // previewDelta = 0 でプレビューなしの確定表示を行う。
             renderer_.drawLife(state_, result.player, 0);
+
+            // ライフ変更を NVS に永続化する。
+            // スライド中の中間値ではなく確定時のみ保存する（NVS 書き込み寿命のため）。
+            // save() が失敗してもアプリの動作は継続する。
+            storage_.save(state_);
         }
     }
 
@@ -557,6 +491,9 @@ void AppController::handleButtonEvent(input::ButtonEvent event,
                 // drawLife は各約 4.5 ms なので 2 回呼んでも予算内（docs/07）。
                 renderer_.drawLife(state_, PlayerId::Top, 0);
                 renderer_.drawLife(state_, PlayerId::Bottom, 0);
+
+                // Undo 後の状態を NVS に永続化する。
+                storage_.save(state_);
             } else {
                 // 失敗（履歴空）: 最短パルスで「無効操作」を伝える (20ms)。
                 // docs/05 の開始禁止領域と同じパルス長で一貫性を保つ。
@@ -684,6 +621,8 @@ void AppController::executeScreenAction(ScreenAction action) {
         renderer_.drawAll(state_);
         // enterActive が dirty を立てるので、consumeDirty で二重描画しないよう消費する
         screenState_.consumeDirty();
+        // 試合開始時の状態を NVS に永続化する。
+        storage_.save(state_);
         break;
 
     case ScreenAction::Rematch:
@@ -692,6 +631,8 @@ void AppController::executeScreenAction(ScreenAction action) {
         screenState_.enterActive();
         renderer_.drawAll(state_);
         screenState_.consumeDirty();
+        // Rematch 後の状態を NVS に永続化する。
+        storage_.save(state_);
         break;
 
     case ScreenAction::NewGame:
@@ -705,6 +646,8 @@ void AppController::executeScreenAction(ScreenAction action) {
         screenState_.setSetupLife(PlayerId::Bottom,
                                  state_.players[1].startingLife);
         // setSetupLife が dirty を立てるので、consumeDirty → drawSetup で反映される
+        // NewGame 時点での状態を NVS に永続化する。
+        storage_.save(state_);
         break;
 
     case ScreenAction::SwapSides:
@@ -712,16 +655,8 @@ void AppController::executeScreenAction(ScreenAction action) {
         domain::swapSides(state_);
         // 確定の振動を鳴らして操作成功を伝える
         haptics_.pulse(kVibConfirmMs);
-        break;
-
-    case ScreenAction::Sleep:
-        // スリープ要求を保留する。即座には実行しない。
-        // なぜ: この時点でボタンが押されたままであり、そのままスリープに入ると
-        // ボタンの LOW レベルが wakeup ソースにヒットして即復帰してしまう。
-        // sleepPending_ を立てて、update() ループの先頭でボタンが離れたことを
-        // 確認してからスリープに入る。
-        sleepPending_ = true;
-        Serial.println("SLEEP,pending");
+        // SwapSides 後の状態を NVS に永続化する。
+        storage_.save(state_);
         break;
 
     case ScreenAction::None:
@@ -803,268 +738,6 @@ void AppController::drawCurrentScreen(uint32_t /*nowMs*/) {
         renderer_.drawAbout();
         break;
     }
-}
-
-// ============================================================
-// ライトスリープの実行
-//
-// なぜ deepSleep / powerOff / timerSleep を使わないか:
-//   これらは RAM を失うため、永続化が未実装（Phase 3 予定）の現時点では
-//   試合状態（MatchState）が消えてしまう。lightSleep は RAM を保持する。
-//
-// なぜ M5.Power.lightSleep() を使わないか:
-//   M5Unified の StopWatch 初期化が _wakeupPin を設定しないため、
-//   touch_wakeup パラメータが機能せず、ピン wakeup が設定されない。
-//   ESP-IDF の gpio_wakeup_enable() + esp_sleep_enable_gpio_wakeup() を
-//   直接呼ぶことで、任意の GPIO を wakeup ソースに設定できる。
-//
-// ボタンの論理:
-//   M5Stack StopWatch の物理ボタンは GPIO 直結（M5IOE1 経由ではない）。
-//   プルアップ + スイッチ GND 接続。
-//   未押下 = HIGH (1)、押下 = LOW (0)。
-//   したがって wakeup レベルは GPIO_INTR_LOW_LEVEL（押下で LOW）を指定する。
-//
-// 復帰手段:
-//   GPIO 復帰（ボタン押下）とタイマー復帰を必ず併用する。
-//   GPIO 復帰だけだと、設定の問題やハードウェア固有の挙動により
-//   復帰不能に陥り、USB シリアルも消えて書き込みもできなくなる
-//   リスクがある（実際に発生済み）。
-//   タイマーにより最悪でも一定時間後に必ず復帰する。
-// ============================================================
-void AppController::enterLightSleep(uint32_t nowMs) {
-    Serial.println("SLEEP,entering");
-
-    // --- 1. スリープ前の準備 ---
-
-    // 振動を停止する。スリープ中にモーターが回り続けるのを防ぐ。
-    // haptics_.tick() はスリープ中に呼ばれないため、ここで明示的に止める。
-    if (haptics_.isActive()) {
-        M5.Power.setVibration(0);
-    }
-
-    // 画面を消す。M5.Display.sleep() はディスプレイコントローラを
-    // スリープモードにし、バックライトも消灯する。
-    // ライトスリープ中は設定が保持されるため、復帰後の再初期化は不要。
-    M5.Display.sleep();
-    M5.Display.setBrightness(0);
-
-    // --- 2. ボタン GPIO のスリープ用設定 ---
-    // ESP32-S3 のライトスリープでは既定で SLP_SEL が有効になり、
-    // GPIO がスリープ用レジスタの設定に切り替わる。
-    // M5Unified の m5gfx::pinMode(input) はスリープ用レジスタに
-    // プルアップを設定しないため（SLP_PU ビットがクリアされる）、
-    // スリープ中にピンがフローティングになりボタン押下を検出できない。
-    //
-    // 対策:
-    //   (1) gpio_set_direction + gpio_pullup_en で ESP-IDF ドライバ経由の
-    //       明示的な入力 + プルアップ設定を行う
-    //   (2) gpio_sleep_sel_dis() で SLP_SEL を無効化し、通常の GPIO 設定を
-    //       スリープ中も維持する
-    //
-    // これにより、スリープ中もピンは INPUT + PULL-UP のまま保持され、
-    // ボタン押下（LOW）を gpio_wakeup で検出できる。
-    for (const auto pin : {kGpioKeyA, kGpioKeyB}) {
-        gpio_set_direction(pin, GPIO_MODE_INPUT);
-        gpio_pullup_en(pin);
-        gpio_pulldown_dis(pin);
-        gpio_sleep_sel_dis(pin);
-    }
-
-    // スリープ前の GPIO レベルを記録する。
-    // 実機デバッグ用: ボタン未押下で 1 (HIGH)、押下で 0 (LOW) が期待値。
-    // この値が期待と異なる場合、プルアップやピン設定に問題がある。
-    Serial.printf("SLEEP,gpio_level: KEYA(GPIO%d)=%d KEYB(GPIO%d)=%d\n",
-                  static_cast<int>(kGpioKeyA),
-                  gpio_get_level(kGpioKeyA),
-                  static_cast<int>(kGpioKeyB),
-                  gpio_get_level(kGpioKeyB));
-
-    // --- 3. wakeup ソースの設定 ---
-
-    // GPIO wakeup: ボタン押下（LOW）で復帰する。
-    // いずれかの設定が失敗した場合、GPIO wakeup が効かない状態でスリープに
-    // 入ると復帰不能になるため、スリープ自体を abort して通常動作に戻る。
-    esp_err_t err;
-    bool gpioWakeupOk = true;
-
-    err = gpio_wakeup_enable(kGpioKeyA, GPIO_INTR_LOW_LEVEL);
-    if (err != ESP_OK) {
-        Serial.printf("SLEEP,abort,reason=gpio_wakeup_enable(KEYA) failed: %d\n", err);
-        gpioWakeupOk = false;
-    }
-
-    err = gpio_wakeup_enable(kGpioKeyB, GPIO_INTR_LOW_LEVEL);
-    if (err != ESP_OK) {
-        Serial.printf("SLEEP,abort,reason=gpio_wakeup_enable(KEYB) failed: %d\n", err);
-        gpioWakeupOk = false;
-    }
-
-    err = esp_sleep_enable_gpio_wakeup();
-    if (err != ESP_OK) {
-        Serial.printf("SLEEP,abort,reason=esp_sleep_enable_gpio_wakeup() failed: %d\n", err);
-        gpioWakeupOk = false;
-    }
-
-    if (!gpioWakeupOk) {
-        // GPIO wakeup 設定に失敗した。スリープに入らず通常動作に戻る。
-        // 画面・入力状態を復帰させ、sleepPending_ は update() 側で既にクリア
-        // されているため追加操作は不要。
-        Serial.println("SLEEP,abort,gpio_wakeup_setup_failed");
-        gpio_wakeup_disable(kGpioKeyA);
-        gpio_wakeup_disable(kGpioKeyB);
-        // gpio_wakeup_enable が片方だけ成功し esp_sleep_enable_gpio_wakeup が
-        // 失敗した場合に wakeup source が中途半端に残るのを防ぐ防御的後始末。
-        esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_GPIO);
-        M5.Display.wakeup();
-        M5.Display.setBrightness(64);
-        // 画面を再描画する。Display.sleep() → wakeup() の往復で
-        // フレームバッファがリセットされうるため、メニューを描き直す。
-        const uint8_t batPercent = M5.Power.getBatteryLevel();
-        const bool charging = M5.Power.isCharging();
-        renderer_.drawMenu(screenState_, batPercent, charging);
-        screenState_.consumeDirty();
-        return;
-    }
-
-    // --- 4. ライトスリープに入る（タイマー復帰時は自動再スリープ） ---
-    //
-    // タイマー wakeup: GPIO 復帰が効かなかった場合の安全策。
-    // 復帰手段が GPIO だけだと復帰不能に陥るリスクがあるため、
-    // タイマーを常に併用して最悪でも kSleepSafetyTimerUs 後に復帰する。
-    //
-    // タイマーで復帰した場合はそのまま再スリープする（ユーザーには見えない）。
-    // GPIO で復帰した場合（＝ボタン押下）はループを抜けて通常復帰する。
-    // 再スリープに上限は設けない（ボタン押下以外では絶対に復帰しない）。
-    // GPIO wakeup 設定は上記のチェックで成功が保証されているため、
-    // 「GPIO wakeup が壊れた状態で無限ループ」にはならない。
-    esp_sleep_wakeup_cause_t cause = ESP_SLEEP_WAKEUP_UNDEFINED;
-    int timerReenterCount = 0;
-    bool sleepStartFailed = false;
-    bool timerSetupFailed = false;
-
-    for (;;) {
-        // タイマー wakeup を設定（毎回再設定が必要）。
-        // 失敗した場合、タイマーなしでスリープすると復帰手段が GPIO のみになり
-        // 危険なので、ループを抜けて通常復帰する。
-        err = esp_sleep_enable_timer_wakeup(kSleepSafetyTimerUs);
-        if (err != ESP_OK) {
-            Serial.printf("SLEEP,esp_sleep_enable_timer_wakeup() failed: %d, breaking\n", err);
-            timerSetupFailed = true;
-            break;
-        }
-
-        // シリアルバッファをフラッシュしてからスリープに入る。
-        // スリープに入るとシリアル出力が止まるため、ログが途切れないようにする。
-        Serial.flush();
-
-        // esp_light_sleep_start() はブロッキング呼び出し。
-        // ボタン押下（GPIO LOW）またはタイマー満了で復帰する。
-        err = esp_light_sleep_start();
-        if (err != ESP_OK) {
-            Serial.printf("SLEEP,esp_light_sleep_start() failed: %d\n", err);
-            sleepStartFailed = true;
-            break;
-        }
-
-        cause = esp_sleep_get_wakeup_cause();
-
-        if (cause == ESP_SLEEP_WAKEUP_TIMER) {
-            ++timerReenterCount;
-            // タイマーによる空振り復帰。無制限に再スリープする。
-            Serial.printf("SLEEP,timer_reenter,%d\n", timerReenterCount);
-            continue;
-        }
-
-        // GPIO 復帰またはその他の理由 → ループを抜けて通常復帰する。
-        break;
-    }
-
-    // --- 5. 復帰後の処理 ---
-
-    // 復帰理由をログに出す。
-    // GPIO で起きたのかタイマーで起きたのかが分かれば、次の切り分けが進む。
-    // スリープ自体が開始できなかった場合、またはタイマー設定に失敗した場合は
-    // 専用ログで区別する。
-    if (timerSetupFailed) {
-        Serial.println("SLEEP,timer_setup_failed,sleep_aborted");
-    } else if (sleepStartFailed) {
-        Serial.println("SLEEP,sleep_start_failed,never_entered_sleep");
-    } else {
-        // 書式: SLEEP,woke_up,cause=<理由名>(<数値>)
-        const char* causeStr = "unknown";
-        switch (cause) {
-        case ESP_SLEEP_WAKEUP_GPIO:  causeStr = "GPIO";  break;
-        case ESP_SLEEP_WAKEUP_TIMER: causeStr = "TIMER"; break;
-        default: break;
-        }
-        Serial.printf("SLEEP,woke_up,cause=%s(%d),timer_reenter=%d\n",
-                      causeStr, static_cast<int>(cause), timerReenterCount);
-    }
-
-    // GPIO wakeup を無効化する。
-    // M5Unified の Power_Class::lightSleep() と同様、復帰後にクリーンアップする。
-    // gpio_wakeup_enable は永続的な設定なので、使い終わったら無効にする。
-    gpio_wakeup_disable(kGpioKeyA);
-    gpio_wakeup_disable(kGpioKeyB);
-
-    // 画面を復帰する。
-    // M5.Display.wakeup() はディスプレイコントローラをアクティブモードに戻す。
-    // ライトスリープ中は LCD コントローラの設定が保持されているため、
-    // 再初期化は不要。
-    M5.Display.wakeup();
-    M5.Display.setBrightness(64);  // M5Unified のデフォルト輝度
-
-    // 入力状態をリセットする。
-    // なぜ: ライトスリープ後は millis() が大きく飛ぶ（スリープ時間ぶん進む）。
-    // ButtonInput / GestureDetector の内部タイマーが古い時刻を保持しており、
-    // リセットしないと:
-    //   - ButtonInput: スリープ時間ぶんの heldMs() が返り、即座に長押し成立する
-    //   - GestureDetector: 古い prevMs_ で角速度計算が壊れる
-    // また、復帰に使ったボタンの押下がそのままメニュー操作として誤発火するのを防ぐ。
-    buttonInput_.reset();
-    gesture_.reset();
-
-    // prevPreview_ と prevGestureState_ もリセットする。
-    // cancelOngoingGesture() と同じ理由: プレビュー差分検出の不整合を防ぐ。
-    prevPreview_ = input::GesturePreview{};
-    prevGestureState_ = input::GestureState::Idle;
-
-    // prevTouching_ をリセットする。スリープ前にタッチしていた場合に
-    // 復帰後の最初のフレームで立ち下がりが誤検出されるのを防ぐ。
-    prevTouching_ = false;
-
-    // 長押し進捗のリセット。全画面再描画で上書きされるため。
-    prevHoldPercent_ = 0;
-
-    // ロック中タッチ警告フラグのリセット。
-    lockTouchWarned_ = false;
-
-    // 画面を再描画する。ScreenState は Screen::Menu のまま。
-    // バッテリー情報も更新してメニューを描き直す。
-    const uint8_t batPercent = M5.Power.getBatteryLevel();
-    const bool charging = M5.Power.isCharging();
-    renderer_.drawMenu(screenState_, batPercent, charging);
-
-    // consumeDirty() を消費する。enterLightSleep() 内で描画したので、
-    // update() に戻ったときに二重描画しないようにする。
-    screenState_.consumeDirty();
-
-    // M5.update() を呼んでボタン状態を更新する。
-    // スリープ復帰直後、M5.BtnA/BtnB の内部状態が古いままなので、
-    // ここで最新の状態を読み込む。
-    M5.update();
-
-    // スリープ復帰後の入力抑制フラグを立てる。
-    // なぜ必要か: 復帰直後、メニューのカーソルは Sleep 項目の上にある。
-    // 復帰に使ったボタンを離した瞬間に LockToggleRequested（= onSelect()）が
-    // 発火し、カーソル位置の Sleep が再実行されて即座にスリープへ再突入する。
-    // このフラグにより、update() の先頭で両ボタンが離されるまで入力処理を
-    // 全てスキップし、解除時に buttonInput_.reset() で内部状態をクリアする。
-    //
-    // タイマー設定エラーやスリープ開始失敗で復帰した場合: ボタンは押されていないので、
-    // 次の update() で即座に抑制が解除される。通常操作に復帰する。
-    wakeInputSuppressed_ = true;
-    Serial.println("SLEEP,input_suppressed");
 }
 
 }  // namespace counter::app
