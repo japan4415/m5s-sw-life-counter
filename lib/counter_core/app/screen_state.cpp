@@ -129,16 +129,6 @@ ScreenAction ScreenState::onSelect() {
             markDirty();
             return ScreenAction::SwapSides;
 
-        case MenuItem::Sleep:
-            // スリープは即座に実行する。確認不要。
-            // スリープは可逆な操作で、ボタンを押せば復帰するため。
-            // 画面は Menu のまま留まる。復帰後にメニューが表示され、
-            // Resume で試合に戻れる。
-            // markDirty() は呼ばない。アプリ層がスリープ復帰後に
-            // 画面全体を再描画する前提のため、ここで dirty フラグを
-            // 立てる必要はない。
-            return ScreenAction::Sleep;
-
         case MenuItem::About:
             screen_ = Screen::About;
             markDirty();

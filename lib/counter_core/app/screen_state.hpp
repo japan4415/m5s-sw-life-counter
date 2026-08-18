@@ -13,9 +13,9 @@ using counter::PlayerId;
 enum class Screen : uint8_t { Setup, Active, Menu, History, About };
 
 enum class MenuItem : uint8_t {
-    Resume, History, SetLife, Rematch, NewGame, SwapSides, Sleep, About
+    Resume, History, SetLife, Rematch, NewGame, SwapSides, About
 };
-constexpr uint8_t kMenuItemCount = 8;
+constexpr uint8_t kMenuItemCount = 7;
 
 // 画面側では実行できず、アプリ層に実行させたい動作。
 // 各入力ハンドラの戻り値として返し、アプリ層が dispatch する。
@@ -25,7 +25,6 @@ enum class ScreenAction : uint8_t {
     Rematch,       // 確認済み
     NewGame,       // 確認済み。Setup へ戻る
     SwapSides,     // 上下入れ替え
-    Sleep,         // デバイスをスリープさせる
 };
 
 /// 画面遷移とメニュー選択の状態機械。

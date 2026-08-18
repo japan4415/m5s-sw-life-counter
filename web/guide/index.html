@@ -37,9 +37,24 @@
           </div>
         </section>
 
-        <!-- 3. 初回起動 -->
+        <!-- 3. 電源の入れ方・切り方 -->
         <section class="content-section">
-          <h2>3. 初回起動と開始ライフ設定</h2>
+          <h2 id="power">3. 電源の入れ方・切り方</h2>
+          <div class="operation-card">
+            <ul>
+              <li><strong>電源 ON</strong>: 電源ボタンを<strong>短押し</strong>（1 回）</li>
+              <li><strong>電源 OFF</strong>: 電源ボタンを<strong>素早く 2 回押し</strong></li>
+            </ul>
+            <p>電源を切っても試合状態（ライフ・履歴）は自動保存されます。次に電源を入れると、前回の続きからそのまま再開できます。</p>
+          </div>
+          <div class="warn-box">
+            <strong>注意:</strong> 電源ボタンを長押し（約 2 秒）するとダウンロードモード（緑 LED 点灯）に入ります。電源を切りたいときは長押しではなく、<strong>素早く 2 回押し</strong>してください。
+          </div>
+        </section>
+
+        <!-- 4. 初回起動 -->
+        <section class="content-section">
+          <h2>4. 初回起動と開始ライフ設定</h2>
           <ol class="guide-steps">
             <li>書き込み完了後、<strong>電源ボタンを短押し</strong>してデバイスを起動します。</li>
             <li>初回起動時は開始ライフの選択画面が表示されます。</li>
@@ -51,9 +66,9 @@
           </ol>
         </section>
 
-        <!-- 4. 対戦中の操作 -->
+        <!-- 5. 対戦中の操作 -->
         <section class="content-section">
-          <h2>4. 対戦中の操作</h2>
+          <h2>5. 対戦中の操作</h2>
 
           <h3>外周スライドでライフを増減</h3>
           <div class="operation-card">
@@ -78,9 +93,9 @@
           </div>
         </section>
 
-        <!-- 5. メニュー操作 -->
+        <!-- 6. メニュー操作 -->
         <section class="content-section">
-          <h2>5. ゲームメニュー</h2>
+          <h2>6. ゲームメニュー</h2>
           <p><strong>KEYA + KEYB を同時に 1 秒長押し</strong>でメニューが開きます。</p>
           <div class="menu-list">
             <div class="menu-item">
@@ -108,23 +123,19 @@
               <span>上下プレイヤーを入れ替え</span>
             </div>
             <div class="menu-item">
-              <strong>Sleep</strong>
-              <span>ライトスリープ（A または B ボタンで復帰）</span>
-            </div>
-            <div class="menu-item">
               <strong>About</strong>
               <span>ファームウェアバージョンを表示</span>
             </div>
           </div>
         </section>
 
-        <!-- 6. トラブルシューティング -->
+        <!-- 7. トラブルシューティング -->
         <section class="content-section">
-          <h2>6. 困ったときは</h2>
+          <h2>7. 困ったときは</h2>
           <details class="help-box">
             <summary>デバイスが起動しない</summary>
             <ul>
-              <li>電源ボタンを短押ししてください。長押しするとダウンロードモードに入ってしまいます。</li>
+              <li>電源ボタンを<strong>短押し</strong>してください。長押しするとダウンロードモードに入ってしまいます（<a href="#power">電源の入れ方・切り方</a>を参照）。</li>
               <li>バッテリーが切れている場合は、USB-C ケーブルで充電してください。</li>
             </ul>
           </details>
@@ -147,7 +158,7 @@
           <details class="help-box">
             <summary>バッテリーの減りが早い</summary>
             <ul>
-              <li>使用後はメニューの Sleep または<strong>電源ボタン</strong>を素早く 2 回押しで電源を切ってください。</li>
+              <li>使用後は<strong>電源ボタンを素早く 2 回押し</strong>して電源を切ってください。</li>
               <li>ダウンロードモードのまま放置するとバッテリーを消費し続けます。通常起動に戻してください。</li>
             </ul>
           </details>
