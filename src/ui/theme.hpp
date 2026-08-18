@@ -307,15 +307,6 @@ constexpr uint16_t kHoldArcTrackColor = 0x4208;  // ダークグレー（進捗�
     // kMenuArcTrackColor と同値だが、メニュー専用とは独立の定義。
 constexpr uint16_t kHoldArcColor      = 0x07FF;  // シアン（進捗弧）
 
-// テキスト "HOLD XX%" を弧の 12 時方向（上端）に描画する。
-// y = kCenterY - (kHoldArcInnerR + kHoldArcOuterR) / 2 = 234 - 195 = 39
-// この位置はリング内だがコンテンツ領域の上方にあり、
-// ライフ数字 (y>=80)・メニュー項目 (y>=157)・ヒント (y=350) と衝突しない。
-constexpr int32_t  kHoldTextY       = 39;
-constexpr float    kHoldTextSize    = 1.5f;
-constexpr uint16_t kHoldTextColor   = 0xFFFF;  // 白（トラック色との高コントラスト）
-constexpr uint16_t kHoldTextBgColor = 0x4208;  // トラック色と揃え、弧上でバッジ風に表示
-
 // ============================================================
 // 履歴画面
 // ============================================================
