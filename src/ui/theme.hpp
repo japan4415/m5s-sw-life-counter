@@ -133,10 +133,16 @@ constexpr float kWarningFontSize = 2.5f;  // 警告 "!" マーク
 // 6 * size * numChars <= kLifeRegionW を満たす最大の整数サイズを返し、
 // kLifeFontSize を上限とする。
 constexpr float lifeFontSizeForWidth(int numChars) {
-    float maxSize = static_cast<float>(kLifeRegionW) /
-                    (6.0f * static_cast<float>(numChars));
-    auto floored = static_cast<float>(static_cast<int>(maxSize));
-    return (floored < kLifeFontSize) ? floored : kLifeFontSize;
+    return static_cast<float>(
+               static_cast<int>(
+                   static_cast<float>(kLifeRegionW) /
+                   (6.0f * static_cast<float>(numChars))))
+           < kLifeFontSize
+        ? static_cast<float>(
+              static_cast<int>(
+                  static_cast<float>(kLifeRegionW) /
+                  (6.0f * static_cast<float>(numChars))))
+        : kLifeFontSize;
 }
 
 // プレビュー表示時の lifeCanvas_ 内描画座標
