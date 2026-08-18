@@ -1,10 +1,15 @@
 name = "m5s-sw-life-counter-flasher"
-main = "src/worker/index.js"
+main = "web/src/worker/index.js"
 compatibility_date = "2026-08-01"
+
+# デプロイ前にビルドを自動実行する
+# Workers Builds ではビルドコマンド未設定でも、この設定によりビルドが走る
+[build]
+command = "cd web && yarn install && yarn build"
 
 # 静的アセット (vite build の出力) をそのまま配信する
 [assets]
-directory = "./dist"
+directory = "./web/dist"
 binding = "ASSETS"
 not_found_handling = "404-page"
 html_handling = "auto-trailing-slash"

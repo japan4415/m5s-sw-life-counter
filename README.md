@@ -84,26 +84,25 @@ pio run -t upload --upload-port /dev/cu.usbmodem<実際のポート番号>
 
 ### Cloudflare Workers Builds の設定
 
-Cloudflare ダッシュボードの Workers Builds で以下を設定する。
+デプロイに必要な設定はすべてリポジトリルートの `wrangler.toml` に集約されている。Cloudflare ダッシュボードの Workers Builds では以下の既定値のままでよい。
 
 | 設定項目 | 値 |
 |---|---|
-| ルートディレクトリ | `web` |
-| ビルドコマンド | `yarn install && yarn build` |
+| ルートディレクトリ | `/`（既定値） |
+| ビルドコマンド | 未設定（既定値） |
 | デプロイコマンド | `npx wrangler versions upload` |
 
-**注意点**:
-
-- ルートディレクトリを `web` に設定しないと `wrangler.toml` が発見されず、デプロイが `Missing entry-point` エラーで失敗する
-- ビルドコマンドを設定しないと `web/dist/` が生成されない。`dist/` は `.gitignore` 対象のためリポジトリには含まれず、ビルドステップが必須である
+`wrangler.toml` の `[build]` セクションにより、デプロイ前に `cd web && yarn install && yarn build` が自動実行される。ダッシュボード側でビルドコマンドやルートディレクトリを変更する必要はない。
 
 ### 手動デプロイ
 
-ローカルから手動でデプロイする場合:
+ローカルから手動でデプロイする場合、リポジトリルートで以下を実行する:
 
 ```bash
-cd web && yarn build && wrangler deploy
+wrangler deploy
 ```
+
+`wrangler.toml` の `[build]` セクションにより、ビルドも自動で実行される。
 
 ## 対象ハードウェア
 

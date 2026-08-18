@@ -4,14 +4,11 @@
   "version": "0.1.0",
   "type": "module",
   "description": "M5Stack StopWatch (ESP32-S3) ファームウェア書き込み Web アプリ",
-  "engines": {
-    "node": ">=20.11.0"
-  },
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "deploy": "npm run build && wrangler deploy"
+    "deploy": "yarn build && wrangler deploy --config ../wrangler.toml"
   },
   "dependencies": {
     "esptool-js": "^0.6.1"
