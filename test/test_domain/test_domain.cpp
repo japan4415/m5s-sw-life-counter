@@ -155,33 +155,6 @@ void test_uint32_max_no_overflow(void) {
     TEST_ASSERT_EQUAL_INT32(1, lc.appliedDelta);
 }
 
-// 上下交換でライフと開始ライフの両方が正しく交換される
-// docs/06: Swap Sides の整合性（不変条件 10）
-void test_swap_sides_exchanges_life_and_starting_life(void) {
-    // 非対称な開始ライフで試合を開始
-    startMatch(ms, 20, 40);
-    // Top のライフだけ変更
-    applyLifeChange(ms, PlayerId::Top, -5, 100);
-
-    // 交換前の状態を確認
-    TEST_ASSERT_EQUAL_UINT32(15, ms.players[toIndex(PlayerId::Top)].life);
-    TEST_ASSERT_EQUAL_UINT32(20,
-                             ms.players[toIndex(PlayerId::Top)].startingLife);
-    TEST_ASSERT_EQUAL_UINT32(40, ms.players[toIndex(PlayerId::Bottom)].life);
-    TEST_ASSERT_EQUAL_UINT32(40,
-                             ms.players[toIndex(PlayerId::Bottom)].startingLife);
-
-    swapSides(ms);
-
-    // 交換後: ライフと開始ライフの両方が入れ替わる
-    TEST_ASSERT_EQUAL_UINT32(40, ms.players[toIndex(PlayerId::Top)].life);
-    TEST_ASSERT_EQUAL_UINT32(40,
-                             ms.players[toIndex(PlayerId::Top)].startingLife);
-    TEST_ASSERT_EQUAL_UINT32(15, ms.players[toIndex(PlayerId::Bottom)].life);
-    TEST_ASSERT_EQUAL_UINT32(20,
-                             ms.players[toIndex(PlayerId::Bottom)].startingLife);
-}
-
 // ========================================================================
 // 追加で検証するケース（タスク指示による）
 // ========================================================================
@@ -323,7 +296,6 @@ int main(int argc, char** argv) {
     RUN_TEST(test_undo_after_slide_minus_8);
     RUN_TEST(test_history_65_entries_keeps_latest_64);
     RUN_TEST(test_uint32_max_no_overflow);
-    RUN_TEST(test_swap_sides_exchanges_life_and_starting_life);
 
     // 追加で検証するケース
     RUN_TEST(test_zero_delta_no_history_entry);

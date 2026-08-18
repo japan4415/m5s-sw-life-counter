@@ -19,9 +19,6 @@ LifeChange applyLifeChange(MatchState& state, PlayerId player,
 // 履歴が空なら false を返し状態を変えない。
 bool undoLast(MatchState& state);
 
-// 上下プレイヤーを入れ替える（ライフと開始ライフの両方）。
-void swapSides(MatchState& state);
-
 // 新しい試合を開始する。履歴をクリアし sequence を 0 に初期化する。
 void startMatch(MatchState& state, uint32_t topStartingLife,
                 uint32_t bottomStartingLife);

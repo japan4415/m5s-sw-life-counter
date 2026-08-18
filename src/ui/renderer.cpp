@@ -568,11 +568,9 @@ void Renderer::drawMenu(const app::ScreenState& sc,
     // --- メニュー項目の描画 ---
     // 項目名は英語。docs/05-ui-ux.md のメニュー定義に準拠する。
     // MenuItem 列挙と同じ順序で並べる:
-    //   Resume(0), History(1), SetLife(2), Rematch(3),
-    //   NewGame(4), SwapSides(5), About(6)
+    //   Resume(0), History(1), SetLife(2), Rematch(3), About(4)
     static constexpr const char* kItemNames[] = {
-        "Resume", "History", "Set Life", "Rematch",
-        "New Game", "Swap Sides", "About"
+        "Resume", "History", "Set Life", "Rematch", "About"
     };
     static_assert(
         sizeof(kItemNames) / sizeof(kItemNames[0]) == app::kMenuItemCount,
@@ -590,7 +588,7 @@ void Renderer::drawMenu(const app::ScreenState& sc,
         char buf[32];
 
         if (isConfirmTarget) {
-            // 確認待ちの対象項目。破壊的操作（Rematch / New Game）が
+            // 確認待ちの対象項目。破壊的操作（Rematch）が
             // 誤操作で実行されないよう、オレンジ色と「?」で警告する。
             // 色だけでなく記号（>, ?, <）でも強調する（色覚差対応）。
             target->setTextSize(theme::kMenuItemFontSize);
