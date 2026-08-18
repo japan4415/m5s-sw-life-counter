@@ -168,7 +168,7 @@ flowchart TD
 
 - ホスティングは **Cloudflare Workers**（wrangler v4）。静的アセット（`dist/`）の直接配信と、GitHub Releases を中継する API プロキシ（`/api/*`）を 1 つの Worker で提供する
 - **GitHub Pages 案は廃止**（ユーザー決定）。Vite の `base` 設定は不要（ルート配信）
-- workers.dev サブドメインで公開可。無料プランは 100,000 req/日
+- カスタムドメイン **m5s-sw-life-counter.discord.jp** で公開する（workers.dev サブドメインも引き続き有効）。無料プランは 100,000 req/日
 - Web Serial は **HTTPS 必須**（localhost は例外）。Cloudflare Workers は自動で HTTPS を提供するため要件を満たす
 
 ### アーキテクチャ図
@@ -299,7 +299,7 @@ flowchart LR
 ```mermaid
 flowchart LR
     A["web/ で vite build"] --> B["wrangler deploy<br>（[assets] で dist/ 配信）"]
-    B --> C["workers.dev で公開"]
+    B --> C["m5s-sw-life-counter.discord.jp で公開"]
     B -.Workers Builds 接続後.-> D["push で自動デプロイ"]
 ```
 
@@ -337,7 +337,7 @@ flowchart LR
 | 項目 | 設計 |
 |---|---|
 | ユーザージェスチャ必須 | `requestPort()` はクリック等のユーザージェスチャ内でのみ呼ぶ。ウィザードの「接続」ボタン押下時のみ実行する |
-| HTTPS 必須 | Web Serial はセキュアコンテキスト必須（localhost は例外）。Cloudflare Workers の自動 HTTPS（workers.dev 含む）で充足 |
+| HTTPS 必須 | Web Serial はセキュアコンテキスト必須（localhost は例外）。Cloudflare Workers の自動 HTTPS（m5s-sw-life-counter.discord.jp / workers.dev）で充足 |
 | バイナリ配信経路 | ファームウェアバイナリは Worker プロキシ（`/api/firmware/:tag/:file`）経由でのみ取得する。CORS のない GitHub 直接 URL へは誘導しない |
 | 意図しない書き込み防止 | 書き込み実行前に確認ダイアログで「対象デバイス（チップ種別）・書き込みファイル一覧・各サイズ・SHA-256」を表示し、明示的な同意を得る |
 | SHA-256 表示 | manifest と実バイナリのハッシュを表示し、配布物の同一性確認と改ざん・破損の検知を可能にする |
@@ -378,7 +378,7 @@ flowchart LR
 | # | 確認事項 | 判断の影響 |
 |---|---|---|
 | Q-1 | リポジトリは public か private か | GITHUB_TOKEN は設計上シークレット前提でどちらでも対応可。ただし **private の場合も Worker プロキシ（/api/releases・/api/firmware）経由ではバイナリが誰でも取得可能になる（公開配信になる）**点を認識して選択する |
-| Q-2 | workers.dev サブドメインでよいか、カスタムドメインを使うか | カスタムドメインなら wrangler.toml / Dashboard でのドメイン設定が追加で必要 |
+| Q-2 | ~~workers.dev サブドメインでよいか、カスタムドメインを使うか~~ | **解決済み**: カスタムドメイン **m5s-sw-life-counter.discord.jp** を使用する（wrangler.toml に `[[routes]]` で設定済み。workers.dev サブドメインも引き続き有効） |
 | Q-3 | デバイス側バージョンとの比較表示に「前回書き込み履歴」（localStorage）を入れるか | 比較表示の UX 実装範囲に影響する |
 
 ## 11. 検証事項

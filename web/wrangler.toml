@@ -12,6 +12,11 @@ not_found_handling = "single-page-application"
 [vars]
 GITHUB_REPO = "japan4415/m5s-sw-life-counter"
 
+# カスタムドメイン（workers.dev サブドメインも引き続き有効）
+[[routes]]
+pattern = "m5s-sw-life-counter.discord.jp"
+custom_domain = true
+
 # レートリミット緩和のためのシークレット（任意）
 #   wrangler secret put GITHUB_TOKEN
 # 未設定の場合は認証なし（60 req/h）で動作する
