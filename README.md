@@ -92,7 +92,9 @@ pio run -t upload --upload-port /dev/cu.usbmodem<実際のポート番号>
 | ビルドコマンド | 未設定（既定値） |
 | デプロイコマンド | `npx wrangler versions upload` |
 
-`wrangler.toml` の `[build]` セクションにより、デプロイ前に `cd web && yarn install && yarn build` が自動実行される。ダッシュボード側でビルドコマンドやルートディレクトリを変更する必要はない。
+`wrangler.toml` の `[build]` セクションにより、デプロイ前にビルドが自動実行される。ダッシュボード側でビルドコマンドやルートディレクトリを変更する必要はない。
+
+> **Yarn バージョンの固定**: `web/yarn.lock` は Yarn 1（classic）形式だが、Cloudflare Workers Builds のビルド環境には Yarn 4 系がインストールされている。Yarn 4 は旧形式の lockfile を自動移行しようとするが、immutable モードでは lockfile の変更が禁止されているためビルドが失敗する（`YN0028`）。これを回避するため、`wrangler.toml` のビルドコマンドでは `npx yarn@1.22.22` により Yarn 1 系をバージョン固定で呼び出している。`web/package.json` の `packageManager` フィールドでも同バージョンを指定しており、corepack 有効環境でのローカル開発でも Yarn 1 が使われる。
 
 ### 手動デプロイ
 
