@@ -76,7 +76,7 @@ jobs:
       # 冪等性: 同一タグで再実行した場合、既存の Release を編集（アセット追加）し、
       # 同名アセット（bootloader.bin 等）は削除してから再アップロードされるため重複しない
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           files: |
