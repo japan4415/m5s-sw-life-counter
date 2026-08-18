@@ -614,10 +614,10 @@ void Renderer::drawMenu(const app::ScreenState& sc,
     }
 
     // --- 確認待ちメッセージ ---
-    // 進捗の数値表示 ("HOLD XX%") は drawHoldProgress() に移管した。
+    // 長押し進捗は drawHoldProgress() が円弧のみで表現する（数値テキストは廃止済み）。
     // ここでは操作指示テキスト "Hold B to confirm" のみ表示する。
     // この文言は「何をすべきか」を伝える役割であり、
-    // drawHoldProgress() の進捗表示（「今どこまで進んだか」）とは責務が異なる。
+    // drawHoldProgress() の進捗円弧（「今どこまで進んだか」）とは責務が異なる。
     if (confirming) {
         target->setTextSize(theme::kMenuConfirmFontSize);
         target->setTextColor(theme::kMenuConfirmColor, theme::kBgColor);
