@@ -1,0 +1,64 @@
+name: CI Firmware
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'lib/**'
+      - 'test/**'
+      - 'platformio.ini'
+      - '.github/workflows/ci-firmware.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-firmware-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build and test firmware
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PlatformIO Core
+        run: pip install platformio
+
+      - name: Get PlatformIO version
+        id: pio-version
+        run: echo "version=$(python -m platformio --version | awk '{print $4}')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache PlatformIO toolchains
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: ${{ runner.os }}-platformio-ci-${{ steps.pio-version.outputs.version }}-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-platformio-ci-${{ steps.pio-version.outputs.version }}-
+            ${{ runner.os }}-platformio-ci-
+            ${{ runner.os }}-platformio-
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-platformio
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Build firmware
+        run: pio run -e m5stack-stopwatch
+
+      - name: Run native tests
+        run: pio test -e native
