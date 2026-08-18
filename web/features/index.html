@@ -113,10 +113,6 @@
               <span>上下プレイヤーを入れ替え</span>
             </div>
             <div class="menu-item">
-              <strong>Sleep</strong>
-              <span>ライトスリープモードに入る（A または B ボタンで復帰）</span>
-            </div>
-            <div class="menu-item">
               <strong>About</strong>
               <span>ファームウェアバージョンを表示</span>
             </div>
@@ -126,6 +122,13 @@
         <!-- フィードバック・電源 -->
         <section class="content-section">
           <h2>フィードバックと電源管理</h2>
+          <div class="feature-card">
+            <h3>電源操作と自動復元</h3>
+            <p>
+              電源ボタンを<strong>短押し</strong>で電源 ON、<strong>素早く 2 回押し</strong>で電源 OFF。
+              電源を切っても試合状態（ライフ・履歴）は自動保存されるため、次に電源を入れると前回の続きからそのまま再開できます。
+            </p>
+          </div>
           <div class="feature-card">
             <h3>振動フィードバック</h3>
             <p>操作時に振動でフィードバックを返します。音は鳴りません（大会会場でも安心）。</p>
@@ -147,7 +150,6 @@
           <h2>今後の予定（未実装）</h2>
           <div class="feature-card future">
             <ul>
-              <li><strong>状態の永続化と復元</strong> &mdash; ライフ・履歴・ロック状態を NVS に自動保存し、再起動後に前回の続きから再開</li>
               <li><strong>自動減光</strong> &mdash; 90 秒間無操作で画面を減光し、バッテリーを節約</li>
               <li><strong>BLE スマホアプリ連携</strong> &mdash; 試合記録・統計をスマートフォンで確認</li>
               <li><strong>クラウド同期</strong> &mdash; 試合データをクラウドに保存・共有</li>

@@ -47,9 +47,9 @@ FaB ライフカウンターのソフトウェア構成、レイヤ設計、メ�
 | ButtonInput | 物理ボタン A/B の押下状態から短押し・長押し・A+B 同時押しを判定する状態機械。ハードウェア非依存（押下状態と時刻を引数で受け取る） |
 | ScreenState | 画面遷移（Setup / Active / Menu / History / About）とメニュー選択の状態機械。ハードウェア非依存 |
 | Renderer | M5GFX を使った画面描画。PSRAM 上の Canvas への描画と転送 |
-| Storage | NVS への永続化（MVP）。保存スケジューリングとスロットローテーション |
+| Storage | NVS への永続化（実装済み）。名前空間 `lifectr`、キー `s00`〜`s15` の 16 スロットローテーション。操作確定のたびに PersistentRecord（magic/schemaVersion/payloadSize/sequence/state/crc32）を書き込み、起動時に sequence 最大の有効レコードから自動復元する |
 | Haptics | 振動モーターの制御。パターン再生とタイミング管理 |
-| PowerManager | 画面輝度制御、スリープ管理、バッテリー状態監視 |
+| PowerManager | 画面輝度制御、バッテリー状態監視 |
 | M5Unified / M5GFX | ハードウェア抽象化ライブラリ。ディスプレイ・タッチ・ボタン・振動・電源を統一的に扱う |
 | Hardware | M5Stack StopWatch の物理ハードウェア（ESP32-S3、AMOLED、タッチ IC、振動モーター等） |
 
@@ -241,7 +241,7 @@ LVGL は使用せず、M5GFX で直接描画する。
 | インターフェース | 実装（本番） | 責務 |
 |---|---|---|
 | `Haptics` | `haptics_m5.cpp` | 振動モーターの制御。強度 255 固定の PWM パルスを非ブロッキングで再生する。間引きロジックは実装済みだが現在は無効化されている（`kStepThrottleEnabled = false`） |
-| `PowerManager` | `power_m5.cpp` | 画面輝度制御、スリープ遷移、バッテリー状態取得 |
+| `PowerManager` | `power_m5.cpp` | 画面輝度制御、バッテリー状態取得 |
 | `Storage` | `storage_nvs.cpp` | NVS への永続化。スロットローテーションと CRC 検証 |
 | `Display` | M5GFX / M5Canvas | 画面描画と部分矩形転送 |
 
@@ -278,7 +278,7 @@ LVGL は使用せず、M5GFX で直接描画する。
 
 **ロック（LOCKED）は画面状態ではなく `MatchState::touchLocked` フラグ**で管理する。ロック中もメニューやボタン操作は通常どおり動作するため、画面遷移として扱う必要がない。
 
-**BOOT / RESTORE_PROMPT は Phase 3（永続化）で追加予定。** 永続化が未実装のため、現在の実装にはこれらの状態は存在しない。
+NVS に有効な保存データがある場合、起動時に確認ダイアログなしで直接 `ACTIVE` 状態に復帰する。保存データがない場合は `SETUP` から開始する。
 
 ### 電源状態
 
@@ -314,7 +314,7 @@ MVP では単一の `loop()` 関数で全処理を実行する。複雑なマル
 | Match Engine Task | 唯一の状態変更主体。ドメインロジックの実行 |
 | Event Store Task | LittleFS へのイベント追記、CRC 検証、NVS スナップショット |
 | BLE Task | GATT サーバー、接続管理、イベント送受信、分割転送 |
-| Power / RTC Task | バッテリー管理、時刻同期、スリープ制御 |
+| Power / RTC Task | バッテリー管理、時刻同期 |
 
 タスク間はコマンドキューで通信し、状態変更は Match Engine Task に集約する:
 
