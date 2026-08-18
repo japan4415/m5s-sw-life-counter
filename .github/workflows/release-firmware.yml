@@ -1,0 +1,87 @@
+name: Release Firmware
+
+# v* タグの push をトリガーにファームウェアをビルドし、
+# GitHub Release に固定名アセット（bootloader/partitions/firmware + SHA-256）を添付する。
+# アセット名は Web フラッシャー側（/api/firmware/:tag/:file）の取得規約と一致させること。
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  # GitHub Release の作成・アセットのアップロードに必要
+  contents: write
+
+concurrency:
+  # 同一タグに対する並行実行を防ぐ（再 push 時は古い実行をキャンセルし最新を優先）
+  group: release-firmware-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    name: Build and publish firmware
+    runs-on: ubuntu-latest
+    # タグ名に '/' を含む場合（例: v1.0/rc1）は Web フラッシャーの
+    # /api/firmware/:tag/:file のパス構造と衝突するため Release 作成を拒否する
+    if: ${{ !contains(github.ref_name, '/') }}
+    # 初回はツールチェーン（esp32s3 用 GCC 等）のダウンロードで時間がかかるため余裕を持たせる
+    timeout-minutes: 30
+
+    steps:
+      # タグ push トリガーではデフォルトでタグが指すコミット（タグ時点のソース）が取得される
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PlatformIO Core
+        run: pip install platformio
+
+      # キャッシュキーに PlatformIO バージョンと platformio.ini のハッシュを含めることで、
+      # PlatformIO 本体の更新・依存/プラットフォーム変更時のみツールチェーンを再取得する。
+      # restore-keys によりバージョン更新時も直前のキャッシュを流用し差分のみダウンロードする
+      - name: Get PlatformIO version
+        id: pio-version
+        run: echo "version=$(python -m platformio --version | awk '{print $4}')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache PlatformIO toolchains
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: ${{ runner.os }}-platformio-${{ steps.pio-version.outputs.version }}-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-platformio-${{ steps.pio-version.outputs.version }}-
+            ${{ runner.os }}-platformio-
+
+      - name: Build firmware
+        run: pio run -e m5stack-stopwatch
+
+      - name: Stage release assets
+        run: |
+          mkdir -p release-assets
+          cp .pio/build/m5stack-stopwatch/bootloader.bin release-assets/
+          cp .pio/build/m5stack-stopwatch/partitions.bin release-assets/
+          cp .pio/build/m5stack-stopwatch/firmware.bin release-assets/
+
+      # 形式: "<hash>  <filename>"（スペース2個区切り）。sha256sum は -b フラグなしで使用
+      # （ubuntu-latest の GNU coreutils はデフォルトでこの形式・バイナリ自動判定）
+      - name: Generate SHA-256 checksums
+        run: |
+          cd release-assets
+          sha256sum bootloader.bin partitions.bin firmware.bin > sha256sums.txt
+
+      # 冪等性: 同一タグで再実行した場合、既存の Release を編集（アセット追加）し、
+      # 同名アセット（bootloader.bin 等）は削除してから再アップロードされるため重複しない
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            release-assets/bootloader.bin
+            release-assets/partitions.bin
+            release-assets/firmware.bin
+            release-assets/sha256sums.txt
+          generate_release_notes: true

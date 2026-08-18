@@ -1,0 +1,22 @@
+{
+  "name": "m5s-sw-life-counter-flasher",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "M5Stack StopWatch (ESP32-S3) ファームウェア書き込み Web アプリ",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && wrangler deploy"
+  },
+  "dependencies": {
+    "esptool-js": "^0.6.1"
+  },
+  "devDependencies": {
+    "@types/w3c-web-serial": "^1.0.8",
+    "typescript": "^5.8.3",
+    "vite": "^8.2.1",
+    "wrangler": "^4.123.0"
+  }
+}
