@@ -912,8 +912,17 @@ void AppController::enterLightSleep(uint32_t nowMs) {
         Serial.println("SLEEP,abort,gpio_wakeup_setup_failed");
         gpio_wakeup_disable(kGpioKeyA);
         gpio_wakeup_disable(kGpioKeyB);
+        // gpio_wakeup_enable が片方だけ成功し esp_sleep_enable_gpio_wakeup が
+        // 失敗した場合に wakeup source が中途半端に残るのを防ぐ防御的後始末。
+        esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_GPIO);
         M5.Display.wakeup();
         M5.Display.setBrightness(64);
+        // 画面を再描画する。Display.sleep() → wakeup() の往復で
+        // フレームバッファがリセットされうるため、メニューを描き直す。
+        const uint8_t batPercent = M5.Power.getBatteryLevel();
+        const bool charging = M5.Power.isCharging();
+        renderer_.drawMenu(screenState_, batPercent, charging);
+        screenState_.consumeDirty();
         return;
     }
 
@@ -931,6 +940,7 @@ void AppController::enterLightSleep(uint32_t nowMs) {
     esp_sleep_wakeup_cause_t cause = ESP_SLEEP_WAKEUP_UNDEFINED;
     int timerReenterCount = 0;
     bool sleepStartFailed = false;
+    bool timerSetupFailed = false;
 
     for (;;) {
         // タイマー wakeup を設定（毎回再設定が必要）。
@@ -939,6 +949,7 @@ void AppController::enterLightSleep(uint32_t nowMs) {
         err = esp_sleep_enable_timer_wakeup(kSleepSafetyTimerUs);
         if (err != ESP_OK) {
             Serial.printf("SLEEP,esp_sleep_enable_timer_wakeup() failed: %d, breaking\n", err);
+            timerSetupFailed = true;
             break;
         }
 
@@ -972,8 +983,11 @@ void AppController::enterLightSleep(uint32_t nowMs) {
 
     // 復帰理由をログに出す。
     // GPIO で起きたのかタイマーで起きたのかが分かれば、次の切り分けが進む。
-    // スリープ自体が開始できなかった場合は専用ログで区別する。
-    if (sleepStartFailed) {
+    // スリープ自体が開始できなかった場合、またはタイマー設定に失敗した場合は
+    // 専用ログで区別する。
+    if (timerSetupFailed) {
+        Serial.println("SLEEP,timer_setup_failed,sleep_aborted");
+    } else if (sleepStartFailed) {
         Serial.println("SLEEP,sleep_start_failed,never_entered_sleep");
     } else {
         // 書式: SLEEP,woke_up,cause=<理由名>(<数値>)
