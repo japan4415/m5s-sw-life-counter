@@ -63,7 +63,7 @@ ScreenAction ScreenState::onNext() {
 
     case Screen::Menu:
         // 確認待ちを解除する。別の項目へカーソルが移ったのに
-        // 前の項目の確認が残っていると、意図しない Rematch / NewGame を
+        // 前の項目の確認が残っていると、意図しない Rematch を
         // 長押しで実行してしまう危険があるため。
         confirming_ = false;
         menuIndex_  = (menuIndex_ + 1) % kMenuItemCount;
@@ -112,13 +112,6 @@ ScreenAction ScreenState::onSelect() {
             // 対戦中にうっかりメニューから即 Rematch してしまうのを防ぐ。
             confirming_    = true;
             confirmTarget_ = MenuItem::Rematch;
-            markDirty();
-            return ScreenAction::None;
-
-        case MenuItem::NewGame:
-            // Rematch と同じ理由で確認待ちにする。
-            confirming_    = true;
-            confirmTarget_ = MenuItem::NewGame;
             markDirty();
             return ScreenAction::None;
 
@@ -181,12 +174,7 @@ ScreenAction ScreenState::onLongPressB() {
             markDirty();
             return ScreenAction::Rematch;
         }
-        if (confirmTarget_ == MenuItem::NewGame) {
-            screen_ = Screen::Setup;
-            markDirty();
-            return ScreenAction::NewGame;
-        }
-        // confirmTarget_ が Rematch / NewGame 以外になることは
+        // confirmTarget_ が Rematch 以外になることは
         // onSelect() の実装上ありえないが、安全のため None を返す。
         return ScreenAction::None;
 

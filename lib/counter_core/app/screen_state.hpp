@@ -13,9 +13,9 @@ using counter::PlayerId;
 enum class Screen : uint8_t { Setup, Active, Menu, History, About };
 
 enum class MenuItem : uint8_t {
-    Resume, History, SetLife, Rematch, NewGame, SwapSides, About
+    Resume, History, SetLife, Rematch, SwapSides, About
 };
-constexpr uint8_t kMenuItemCount = 7;
+constexpr uint8_t kMenuItemCount = 6;
 
 // 画面側では実行できず、アプリ層に実行させたい動作。
 // 各入力ハンドラの戻り値として返し、アプリ層が dispatch する。
@@ -23,7 +23,6 @@ enum class ScreenAction : uint8_t {
     None,
     StartMatch,    // Setup で確定。setupLife() の値で試合を開始する
     Rematch,       // 確認済み
-    NewGame,       // 確認済み。Setup へ戻る
     SwapSides,     // 上下入れ替え
 };
 
@@ -41,7 +40,7 @@ public:
     Screen  screen() const;
     uint8_t menuIndex() const;          // 0..kMenuItemCount-1
     MenuItem menuItem() const;
-    bool     awaitingConfirm() const;   // Rematch / NewGame の長押し確認待ち
+    bool     awaitingConfirm() const;   // Rematch の長押し確認待ち
     MenuItem confirmTarget() const;
 
     uint32_t setupLife(PlayerId player) const;
@@ -67,7 +66,7 @@ private:
 
     Screen   screen_      = Screen::Setup;
     uint8_t  menuIndex_   = 0;
-    bool     confirming_  = false;       // Rematch / NewGame の長押し確認待ち
+    bool     confirming_  = false;       // Rematch の長押し確認待ち
     MenuItem confirmTarget_ = MenuItem::Resume;  // confirming_ が true のときだけ有効
     uint32_t setupLife_[2] = {kDefaultLife, kDefaultLife};  // [0]=Top, [1]=Bottom
     bool     dirty_       = true;        // 初期状態は描画が必要

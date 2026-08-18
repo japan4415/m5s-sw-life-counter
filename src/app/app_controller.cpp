@@ -92,8 +92,8 @@ void AppController::begin() {
     storage_.begin();
 
     // NVS に有効な試合状態があり、かつ試合が進行中 (active) の場合のみ
-    // 復元して Active 画面で再開する。active が false の状態（例: NewGame で
-    // Setup に遷移した直後に電源が切れた場合）は復元せず、通常の初期化から始める。
+    // 復元して Active 画面で再開する。active が false の状態は復元せず、
+    // 通常の初期化から始める。
     if (storage_.hasValidState() && storage_.loadedState().active) {
         state_ = storage_.loadedState();
         screenState_.enterActive();
@@ -572,7 +572,7 @@ void AppController::handleButtonEvent(input::ButtonEvent event,
         break;
 
     case input::ButtonEvent::BLongPressed:
-        // B 長押し → 確認を確定（Rematch / NewGame）
+        // B 長押し → 確認を確定（Rematch）
         action = screenState_.onLongPressB();
         break;
 
@@ -633,22 +633,6 @@ void AppController::executeScreenAction(ScreenAction action) {
         screenState_.consumeDirty();
         // Rematch 後の状態を NVS に永続化する。
         storage_.save(state_);
-        break;
-
-    case ScreenAction::NewGame:
-        // Setup に遷移する。開始ライフ（現在のプレイライフではない）を写す。
-        // なぜ startingLife か: ユーザーが前回のゲームで設定した開始値を
-        // ベースに調整したいため。現在のプレイライフは試合中の増減で変動しており、
-        // 設定のベースとしては不適切。
-        // ScreenState 側は既に Screen::Setup へ遷移しているはず。
-        screenState_.setSetupLife(PlayerId::Top,
-                                 state_.players[0].startingLife);
-        screenState_.setSetupLife(PlayerId::Bottom,
-                                 state_.players[1].startingLife);
-        // setSetupLife が dirty を立てるので、consumeDirty → drawSetup で反映される
-        // ここでは storage_.save() を呼ばない。NewGame は試合開始前（Setup 遷移）であり、
-        // state_.active が前試合の true のまま保存すると、電源 OFF→ON で前試合に戻ってしまう。
-        // 新しい試合は StartMatch 確定時に保存される。
         break;
 
     case ScreenAction::SwapSides:
