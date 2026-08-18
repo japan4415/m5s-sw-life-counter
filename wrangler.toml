@@ -7,8 +7,10 @@ compatibility_date = "2026-08-01"
 # NOTE: ビルド環境の yarn は 4 系だが、web/yarn.lock は Yarn 1（classic）形式。
 # ambient な yarn をそのまま使うと lockfile 自動移行 → immutable モード違反 (YN0028) で
 # ビルドが失敗するため、npx で Yarn 1.22.22 をバージョン固定して呼び出す。
+# NOTE: Workers Builds は production とプレビューでルートディレクトリ設定が異なるため
+# (production: /web, プレビュー: /)、リポジトリルート・web/ のどちらが CWD でも動くようにしている。
 [build]
-command = "cd web && npx --yes yarn@1.22.22 install --frozen-lockfile && npx --yes yarn@1.22.22 build"
+command = "cd $([ -d web ] && echo web || echo .) && npx --yes yarn@1.22.22 install --frozen-lockfile && npx --yes yarn@1.22.22 build"
 
 # 静的アセット (vite build の出力) をそのまま配信する
 [assets]

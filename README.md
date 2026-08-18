@@ -84,15 +84,15 @@ pio run -t upload --upload-port /dev/cu.usbmodem<実際のポート番号>
 
 ### Cloudflare Workers Builds の設定
 
-デプロイに必要な設定はすべてリポジトリルートの `wrangler.toml` に集約されている。Cloudflare ダッシュボードの Workers Builds では以下の既定値のままでよい。
+デプロイに必要な設定はすべてリポジトリルートの `wrangler.toml` に集約されている。Cloudflare ダッシュボードの Workers Builds では、プレビュー（PR ブランチ）ビルドと production（main）ビルドでルートディレクトリ設定が異なる場合がある。
 
-| 設定項目 | 値 |
-|---|---|
-| ルートディレクトリ | `/`（既定値） |
-| ビルドコマンド | 未設定（既定値） |
-| デプロイコマンド | `npx wrangler versions upload` |
+| 設定項目 | プレビュー（PR ブランチ） | production（main） |
+|---|---|---|
+| ルートディレクトリ | `/`（既定値） | `/web` に変更されている場合がある |
+| ビルドコマンド | 未設定（既定値） | `yarn install && yarn build` に設定されている場合がある |
+| デプロイコマンド | `npx wrangler versions upload` | `npx wrangler deploy` |
 
-`wrangler.toml` の `[build]` セクションにより、デプロイ前にビルドが自動実行される。ダッシュボード側でビルドコマンドやルートディレクトリを変更する必要はない。
+`wrangler.toml` の `[build]` セクションにより、デプロイ前にビルドが自動実行される。`[build] command` は CWD がリポジトリルートでも `web/` でも動くように記述されているため、ダッシュボード側のルートディレクトリ設定に依存しない。
 
 > **Yarn バージョンの固定**: `web/yarn.lock` は Yarn 1（classic）形式だが、Cloudflare Workers Builds のビルド環境には Yarn 4 系がインストールされている。Yarn 4 は旧形式の lockfile を自動移行しようとするが、immutable モードでは lockfile の変更が禁止されているためビルドが失敗する（`YN0028`）。これを回避するため、`wrangler.toml` のビルドコマンドでは `npx yarn@1.22.22` により Yarn 1 系をバージョン固定で呼び出している。`web/package.json` の `packageManager` フィールドでも同バージョンを指定しており、corepack 有効環境でのローカル開発でも Yarn 1 が使われる。
 
