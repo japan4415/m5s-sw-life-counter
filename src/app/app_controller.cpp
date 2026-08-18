@@ -61,18 +61,27 @@ constexpr gpio_num_t kGpioKeyB = GPIO_NUM_1;
 
 // --- ライトスリープの安全復帰タイマー ---
 // GPIO 復帰が何らかの理由で効かなかった場合のフォールバック。
-// この時間が経過すると無条件に復帰し、画面を復元してスリープには戻らない。
+// この時間が経過するとタイマー復帰するが、自動的に再スリープする。
+// ボタン押下（GPIO wakeup）以外では絶対に通常復帰しない。
 //
-// なぜ必要か:
-//   復帰手段が GPIO だけだと、GPIO 設定の問題やハードウェア固有の挙動により
-//   復帰不能に陥るリスクがある（実際に発生済み: USB シリアルも消え、
-//   ダウンロードモード経由でしか復旧できなくなった）。
-//   タイマーを常に併用することで、最悪でも一定時間後に必ず復帰する。
+// なぜ再スリープ上限を設けないのか:
+//   スリープ突入前に GPIO wakeup 設定（gpio_wakeup_enable /
+//   esp_sleep_enable_gpio_wakeup）の戻り値を検証し、失敗時はスリープ自体を
+//   abort する。したがって「GPIO wakeup が壊れた状態でスリープに入る」ケースは
+//   入口で防がれており、時間ベースの安全弁は不要。
+//   上限を設けると、GPIO が正常でも一定時間後に画面が点灯してしまい、
+//   イシュー #11 の症状が時間スケールを変えて残ることになる。
+//
+// なぜタイマー自体は必要か:
+//   万一 GPIO wakeup 設定は成功したがハードウェア側の問題で GPIO 割り込みが
+//   発生しない場合、タイマーがなければ完全にハングアップする。
+//   タイマーで定期的に起床して再スリープすることで、esp_light_sleep_start() の
+//   失敗やタイマー設定エラーを検出してループを抜ける機会を維持する。
 //
 // 注意: docs/09-power-and-tournament.md の自動減光タイマーとは別物。
 //   自動減光は UI 層の省電力表示制御であり、
 //   このタイマーはスリープからの脱出を保証するハードウェアレベルの安全策。
-constexpr uint64_t kSleepSafetyTimerUs = 30ULL * 1000 * 1000;  // 30 秒（マイクロ秒）
+constexpr uint64_t kSleepSafetyTimerUs = 5ULL * 60 * 1000 * 1000;  // 5 分（マイクロ秒）
 }  // namespace
 
 // ============================================================
@@ -873,59 +882,124 @@ void AppController::enterLightSleep(uint32_t nowMs) {
     // --- 3. wakeup ソースの設定 ---
 
     // GPIO wakeup: ボタン押下（LOW）で復帰する。
+    // いずれかの設定が失敗した場合、GPIO wakeup が効かない状態でスリープに
+    // 入ると復帰不能になるため、スリープ自体を abort して通常動作に戻る。
     esp_err_t err;
+    bool gpioWakeupOk = true;
 
     err = gpio_wakeup_enable(kGpioKeyA, GPIO_INTR_LOW_LEVEL);
     if (err != ESP_OK) {
-        Serial.printf("SLEEP,gpio_wakeup_enable(KEYA) failed: %d\n", err);
+        Serial.printf("SLEEP,abort,reason=gpio_wakeup_enable(KEYA) failed: %d\n", err);
+        gpioWakeupOk = false;
     }
 
     err = gpio_wakeup_enable(kGpioKeyB, GPIO_INTR_LOW_LEVEL);
     if (err != ESP_OK) {
-        Serial.printf("SLEEP,gpio_wakeup_enable(KEYB) failed: %d\n", err);
+        Serial.printf("SLEEP,abort,reason=gpio_wakeup_enable(KEYB) failed: %d\n", err);
+        gpioWakeupOk = false;
     }
 
     err = esp_sleep_enable_gpio_wakeup();
     if (err != ESP_OK) {
-        Serial.printf("SLEEP,esp_sleep_enable_gpio_wakeup() failed: %d\n", err);
+        Serial.printf("SLEEP,abort,reason=esp_sleep_enable_gpio_wakeup() failed: %d\n", err);
+        gpioWakeupOk = false;
     }
 
+    if (!gpioWakeupOk) {
+        // GPIO wakeup 設定に失敗した。スリープに入らず通常動作に戻る。
+        // 画面・入力状態を復帰させ、sleepPending_ は update() 側で既にクリア
+        // されているため追加操作は不要。
+        Serial.println("SLEEP,abort,gpio_wakeup_setup_failed");
+        gpio_wakeup_disable(kGpioKeyA);
+        gpio_wakeup_disable(kGpioKeyB);
+        // gpio_wakeup_enable が片方だけ成功し esp_sleep_enable_gpio_wakeup が
+        // 失敗した場合に wakeup source が中途半端に残るのを防ぐ防御的後始末。
+        esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_GPIO);
+        M5.Display.wakeup();
+        M5.Display.setBrightness(64);
+        // 画面を再描画する。Display.sleep() → wakeup() の往復で
+        // フレームバッファがリセットされうるため、メニューを描き直す。
+        const uint8_t batPercent = M5.Power.getBatteryLevel();
+        const bool charging = M5.Power.isCharging();
+        renderer_.drawMenu(screenState_, batPercent, charging);
+        screenState_.consumeDirty();
+        return;
+    }
+
+    // --- 4. ライトスリープに入る（タイマー復帰時は自動再スリープ） ---
+    //
     // タイマー wakeup: GPIO 復帰が効かなかった場合の安全策。
     // 復帰手段が GPIO だけだと復帰不能に陥るリスクがあるため、
     // タイマーを常に併用して最悪でも kSleepSafetyTimerUs 後に復帰する。
-    // タイマーで復帰した場合は画面を復帰させ、スリープには戻らない。
-    err = esp_sleep_enable_timer_wakeup(kSleepSafetyTimerUs);
-    if (err != ESP_OK) {
-        Serial.printf("SLEEP,esp_sleep_enable_timer_wakeup() failed: %d\n", err);
-    }
+    //
+    // タイマーで復帰した場合はそのまま再スリープする（ユーザーには見えない）。
+    // GPIO で復帰した場合（＝ボタン押下）はループを抜けて通常復帰する。
+    // 再スリープに上限は設けない（ボタン押下以外では絶対に復帰しない）。
+    // GPIO wakeup 設定は上記のチェックで成功が保証されているため、
+    // 「GPIO wakeup が壊れた状態で無限ループ」にはならない。
+    esp_sleep_wakeup_cause_t cause = ESP_SLEEP_WAKEUP_UNDEFINED;
+    int timerReenterCount = 0;
+    bool sleepStartFailed = false;
+    bool timerSetupFailed = false;
 
-    // シリアルバッファをフラッシュしてからスリープに入る。
-    // スリープに入るとシリアル出力が止まるため、ログが途切れないようにする。
-    Serial.flush();
+    for (;;) {
+        // タイマー wakeup を設定（毎回再設定が必要）。
+        // 失敗した場合、タイマーなしでスリープすると復帰手段が GPIO のみになり
+        // 危険なので、ループを抜けて通常復帰する。
+        err = esp_sleep_enable_timer_wakeup(kSleepSafetyTimerUs);
+        if (err != ESP_OK) {
+            Serial.printf("SLEEP,esp_sleep_enable_timer_wakeup() failed: %d, breaking\n", err);
+            timerSetupFailed = true;
+            break;
+        }
 
-    // --- 4. ライトスリープに入る ---
-    // esp_light_sleep_start() はブロッキング呼び出し。
-    // ボタン押下（GPIO LOW）またはタイマー満了で復帰する。
-    // 失敗した場合でもアプリは壊れない（復帰処理をそのまま実行する）。
-    err = esp_light_sleep_start();
-    if (err != ESP_OK) {
-        Serial.printf("SLEEP,esp_light_sleep_start() failed: %d\n", err);
+        // シリアルバッファをフラッシュしてからスリープに入る。
+        // スリープに入るとシリアル出力が止まるため、ログが途切れないようにする。
+        Serial.flush();
+
+        // esp_light_sleep_start() はブロッキング呼び出し。
+        // ボタン押下（GPIO LOW）またはタイマー満了で復帰する。
+        err = esp_light_sleep_start();
+        if (err != ESP_OK) {
+            Serial.printf("SLEEP,esp_light_sleep_start() failed: %d\n", err);
+            sleepStartFailed = true;
+            break;
+        }
+
+        cause = esp_sleep_get_wakeup_cause();
+
+        if (cause == ESP_SLEEP_WAKEUP_TIMER) {
+            ++timerReenterCount;
+            // タイマーによる空振り復帰。無制限に再スリープする。
+            Serial.printf("SLEEP,timer_reenter,%d\n", timerReenterCount);
+            continue;
+        }
+
+        // GPIO 復帰またはその他の理由 → ループを抜けて通常復帰する。
+        break;
     }
 
     // --- 5. 復帰後の処理 ---
 
     // 復帰理由をログに出す。
     // GPIO で起きたのかタイマーで起きたのかが分かれば、次の切り分けが進む。
-    // 書式: SLEEP,woke_up,cause=<理由名>(<数値>)
-    const auto cause = esp_sleep_get_wakeup_cause();
-    const char* causeStr = "unknown";
-    switch (cause) {
-    case ESP_SLEEP_WAKEUP_GPIO:  causeStr = "GPIO";  break;
-    case ESP_SLEEP_WAKEUP_TIMER: causeStr = "TIMER"; break;
-    default: break;
+    // スリープ自体が開始できなかった場合、またはタイマー設定に失敗した場合は
+    // 専用ログで区別する。
+    if (timerSetupFailed) {
+        Serial.println("SLEEP,timer_setup_failed,sleep_aborted");
+    } else if (sleepStartFailed) {
+        Serial.println("SLEEP,sleep_start_failed,never_entered_sleep");
+    } else {
+        // 書式: SLEEP,woke_up,cause=<理由名>(<数値>)
+        const char* causeStr = "unknown";
+        switch (cause) {
+        case ESP_SLEEP_WAKEUP_GPIO:  causeStr = "GPIO";  break;
+        case ESP_SLEEP_WAKEUP_TIMER: causeStr = "TIMER"; break;
+        default: break;
+        }
+        Serial.printf("SLEEP,woke_up,cause=%s(%d),timer_reenter=%d\n",
+                      causeStr, static_cast<int>(cause), timerReenterCount);
     }
-    Serial.printf("SLEEP,woke_up,cause=%s(%d)\n",
-                  causeStr, static_cast<int>(cause));
 
     // GPIO wakeup を無効化する。
     // M5Unified の Power_Class::lightSleep() と同様、復帰後にクリーンアップする。
@@ -987,8 +1061,8 @@ void AppController::enterLightSleep(uint32_t nowMs) {
     // このフラグにより、update() の先頭で両ボタンが離されるまで入力処理を
     // 全てスキップし、解除時に buttonInput_.reset() で内部状態をクリアする。
     //
-    // タイマーで復帰した場合: ボタンは押されていないので、次の update() で
-    // 即座に抑制が解除される。スリープには戻らず通常操作に復帰する。
+    // タイマー設定エラーやスリープ開始失敗で復帰した場合: ボタンは押されていないので、
+    // 次の update() で即座に抑制が解除される。通常操作に復帰する。
     wakeInputSuppressed_ = true;
     Serial.println("SLEEP,input_suppressed");
 }
