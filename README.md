@@ -82,6 +82,29 @@ pio run -t upload --upload-port /dev/cu.usbmodem<実際のポート番号>
 | `/guide` | 使い方ガイド（セットアップ・操作方法・トラブルシューティング） |
 | `/features` | 機能一覧（全機能の詳細解説） |
 
+### Cloudflare Workers Builds の設定
+
+Cloudflare ダッシュボードの Workers Builds で以下を設定する。
+
+| 設定項目 | 値 |
+|---|---|
+| ルートディレクトリ | `web` |
+| ビルドコマンド | `yarn install && yarn build` |
+| デプロイコマンド | `npx wrangler versions upload` |
+
+**注意点**:
+
+- ルートディレクトリを `web` に設定しないと `wrangler.toml` が発見されず、デプロイが `Missing entry-point` エラーで失敗する
+- ビルドコマンドを設定しないと `web/dist/` が生成されない。`dist/` は `.gitignore` 対象のためリポジトリには含まれず、ビルドステップが必須である
+
+### 手動デプロイ
+
+ローカルから手動でデプロイする場合:
+
+```bash
+cd web && yarn build && wrangler deploy
+```
+
 ## 対象ハードウェア
 
 - **製品名**: M5Stack StopWatch Dev Kit (ESP32-S3)
