@@ -42,7 +42,7 @@ FaB では、各ヒーローカードに固有のライフ値が記載されて�
 - 電源断後の自動復元（NVS への永続化）
 - Tournament Mode（Wi-Fi / Bluetooth を初期化しない標準動作モード）
 - 振動フィードバック（音声不使用）
-- ゲームメニュー（Resume / History / Set Life / Rematch / Swap Sides / About）
+- ゲームメニュー（Resume / History / Set Life / Rematch / About）
 
 ### MVP に含まない（将来フェーズ）
 

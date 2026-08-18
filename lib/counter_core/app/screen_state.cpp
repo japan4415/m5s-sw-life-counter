@@ -115,13 +115,6 @@ ScreenAction ScreenState::onSelect() {
             markDirty();
             return ScreenAction::None;
 
-        case MenuItem::SwapSides:
-            // 上下入れ替えは即座に実行する。確認不要。
-            // 表示が入れ替わるだけで、ゲーム状態に不可逆な影響がないため。
-            // 画面は Menu のまま留まる。
-            markDirty();
-            return ScreenAction::SwapSides;
-
         case MenuItem::About:
             screen_ = Screen::About;
             markDirty();

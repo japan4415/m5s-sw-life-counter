@@ -388,12 +388,12 @@ M5Stack StopWatch のプログラマブルボタン 2 個と電源ボタンを�
 SETUP ── B(hold) 1秒 ──→ ACTIVE
                            ↕ A+B(hold) 1秒
                           MENU
-          ┌────────┬──────┼───────┬─────────┬───────┐
-        Resume  History  SetLife  Rematch  SwapSides  About
-          ↓       ↓       ↓     B(hold)確認  (stay)    ↓
-        ACTIVE  HISTORY  SETUP    ACTIVE              ABOUT
-                  ↓                                     ↓
-             B短押し→ MENU                         B短押し→ MENU
+          ┌────────┬──────┼───────┬───────┐
+        Resume  History  SetLife  Rematch  About
+          ↓       ↓       ↓     B(hold)確認  ↓
+        ACTIVE  HISTORY  SETUP    ACTIVE   ABOUT
+                  ↓                          ↓
+             B短押し→ MENU            B短押し→ MENU
 ```
 
 ### 状態の説明
@@ -432,7 +432,7 @@ SETUP ── B(hold) 1秒 ──→ ACTIVE
 
 ### ゲームメニュー
 
-A+B(hold) 長押し（1 秒）で表示するメニュー項目（6 項目、項目間隔 24px、y=157〜277）:
+A+B(hold) 長押し（1 秒）で表示するメニュー項目（5 項目、項目間隔 24px、y=157〜253）:
 
 | メニュー | 動作 | 確認 |
 |---------|------|------|
@@ -440,10 +440,9 @@ A+B(hold) 長押し（1 秒）で表示するメニュー項目（6 項目、項
 | History | 直近のライフ変更履歴を表示 | なし |
 | Set Life | Setup 画面に遷移し、現在のライフを直接修正 | なし |
 | Rematch | 同じ開始ライフに戻す | B(hold) 長押し確認を要求 |
-| Swap Sides | 上下プレイヤーを入れ替える | なし（即座に実行） |
 | About | ファームウェアバージョン表示 | なし |
 
-> **注記**: メニューは 6 項目。New Game は Rematch に統合された（ADR-25、#15）。開始ライフの変更は Set Life で行う。Sleep は NVS 永続化の導入により廃止された（ADR-24）。
+> **注記**: メニューは 5 項目。Swap Sides は使用しないため削除された（ADR-26、#16）。New Game は Rematch に統合された（ADR-25、#15）。開始ライフの変更は Set Life で行う。Sleep は NVS 永続化の導入により廃止された（ADR-24）。
 
 ### バッテリー表示（メニュー画面、Phase 2 実装済み・実機確認済み: 2026-08-18）
 

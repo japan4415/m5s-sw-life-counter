@@ -642,15 +642,6 @@ void AppController::executeScreenAction(ScreenAction action) {
         storage_.save(state_);
         break;
 
-    case ScreenAction::SwapSides:
-        // 上下プレイヤーを入れ替える。メニュー表示のまま。
-        domain::swapSides(state_);
-        // 確定の振動を鳴らして操作成功を伝える
-        haptics_.pulse(kVibConfirmMs);
-        // SwapSides 後の状態を NVS に永続化する。
-        storage_.save(state_);
-        break;
-
     case ScreenAction::None:
         break;
     }

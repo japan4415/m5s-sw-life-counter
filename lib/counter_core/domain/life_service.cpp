@@ -86,12 +86,6 @@ bool undoLast(MatchState& state) {
     return true;
 }
 
-void swapSides(MatchState& state) {
-    PlayerState tmp = state.players[toIndex(PlayerId::Top)];
-    state.players[toIndex(PlayerId::Top)] = state.players[toIndex(PlayerId::Bottom)];
-    state.players[toIndex(PlayerId::Bottom)] = tmp;
-}
-
 void startMatch(MatchState& state, uint32_t topStartingLife,
                 uint32_t bottomStartingLife) {
     state.players[toIndex(PlayerId::Top)] = PlayerState{
