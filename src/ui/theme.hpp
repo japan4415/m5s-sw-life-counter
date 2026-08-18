@@ -164,7 +164,7 @@ constexpr uint16_t kHintTextColor = 0x8410;  // グレー
 // ファームウェアバージョン
 // ============================================================
 // drawAbout() で表示する。リリース時にここを更新する。
-constexpr const char* kFirmwareVersion = "0.2.4";
+constexpr const char* kFirmwareVersion = "1.0.0";
 
 // ============================================================
 // セットアップ画面
@@ -361,7 +361,7 @@ constexpr uint16_t kHistoryEmptyColor  = 0x4208;  // ダークグレー（履歴
 // ============================================================
 
 constexpr int32_t kAboutTitleY   = 200;  // "Life Counter"
-constexpr int32_t kAboutVersionY = 240;  // "v0.2.4"
+constexpr int32_t kAboutVersionY = 240;  // "v1.0.0"
 constexpr int32_t kAboutFooterY  = 350;  // "B: Back"
 
 constexpr float kAboutTitleFontSize   = 2.5f;
