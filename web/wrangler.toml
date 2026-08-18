@@ -6,7 +6,8 @@ compatibility_date = "2026-08-01"
 [assets]
 directory = "./dist"
 binding = "ASSETS"
-not_found_handling = "single-page-application"
+not_found_handling = "404-page"
+html_handling = "auto-trailing-slash"
 
 # GitHub Releases の取得元リポジトリ（所有者/リポジトリ名）
 [vars]

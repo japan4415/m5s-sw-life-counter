@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="M5Stack StopWatch (ESP32-S3) へのファームウェア書き込みツール" />
+    <title>M5Stack StopWatch ファームウェア書き込み</title>
+  </head>
+  <body>
+    <nav id="global-nav"></nav>
+    <div id="app">
+      <header class="app-header">
+        <div class="app-logo" aria-hidden="true"><span class="logo-dot"></span></div>
+        <div>
+          <h1>M5Stack StopWatch ファームウェア書き込み</h1>
+          <p class="app-subtitle">ライフカウンターのインストール・更新（ESP32-S3 / Web Serial）</p>
+        </div>
+      </header>
+
+      <ol class="stepper" aria-label="ウィザードの進捗">
+        <li class="step-item" data-step="1"><span class="step-num">1</span><span class="step-label">リリース選択</span></li>
+        <li class="step-item" data-step="2"><span class="step-num">2</span><span class="step-label">ダウンロードモード</span></li>
+        <li class="step-item" data-step="3"><span class="step-num">3</span><span class="step-label">接続</span></li>
+        <li class="step-item" data-step="4"><span class="step-num">4</span><span class="step-label">チップ認識</span></li>
+        <li class="step-item" data-step="5"><span class="step-num">5</span><span class="step-label">書き込み</span></li>
+        <li class="step-item" data-step="6"><span class="step-num">6</span><span class="step-label">起動確認</span></li>
+      </ol>
+
+      <main>
+        <!-- Web Serial 非対応ブラウザ -->
+        <section class="step-panel" id="unsupported" hidden>
+          <h2>このブラウザは書き込みに対応していません</h2>
+          <p>
+            このツールは Web Serial API を使用します。<strong>Chrome 89+ または Edge 89+</strong>
+            （Windows / macOS / Linux）でアクセスしてください。Safari・Firefox・Android の Chrome では書き込みできません。
+          </p>
+        </section>
+
+        <!-- ステップ 1: リリース選択 -->
+        <section class="step-panel" id="step-1" hidden>
+          <h2>① 書き込むバージョンを選択</h2>
+          <p class="step-desc">
+            書き込むファームウェアのリリースを選択してください。既定は最新の安定版です。
+            ファームウェアがまだリリースされていない場合は、リポジトリの CI で
+            <code>v*</code> タグの Release を作成する必要があります。
+          </p>
+          <div class="error-box" id="release-error" hidden>
+            <p class="error-title" id="release-error-text"></p>
+            <p class="error-hint" id="release-error-hint"></p>
+            <button type="button" class="btn" id="reload-releases">再試行</button>
+          </div>
+          <div id="release-list" class="release-list" aria-live="polite"></div>
+          <div class="release-detail" id="release-detail" hidden>
+            <h3>選択中: <span id="detail-tag"></span></h3>
+            <p id="detail-meta" class="muted"></p>
+            <div id="detail-assets" class="asset-table"></div>
+            <p id="detail-hashes" class="hash-list"></p>
+          </div>
+          <div class="step-nav">
+            <span class="nav-spacer"></span>
+            <button type="button" class="btn btn-primary" id="step1-next" disabled>次へ（ダウンロードモード）</button>
+          </div>
+        </section>
+
+        <!-- ステップ 2: ダウンロードモード移行 -->
+        <section class="step-panel" id="step-2" hidden>
+          <h2>② ダウンロードモードに切り替える</h2>
+          <div class="device-card">
+            <div class="device-circle" aria-hidden="true"></div>
+            <ol class="device-steps">
+              <li><strong>電源ボタンを約 2 秒長押し</strong>してください</li>
+              <li>緑色の LED が点灯したら、その場でボタンを離してください</li>
+              <li>書き込み待機状態（ダウンロードモード）に入ります</li>
+            </ol>
+          </div>
+          <details class="help-box">
+            <summary>緑 LED が点灯しない場合</summary>
+            <ul>
+              <li>長押しが 2 秒未満かもしれません。もう一度、約 2 秒長押ししてください</li>
+              <li>バッテリー残量が不足している可能性があります。USB-C で給電してからお試しください</li>
+            </ul>
+          </details>
+          <div class="warn-box">
+            <strong>注意:</strong>
+            <ul>
+              <li>長押ししすぎると電源が切れます。電源が切れた場合は、電源ボタン短押しで電源を入れ、再度 2 秒長押ししてください</li>
+              <li>ダウンロードモードは無期限に待機するため、中断して放置するとバッテリーを消費し続けます。書き込みを中断する場合は、電源ボタン短押しで通常起動に戻すか、素早く 2 回押しで電源を切ってください</li>
+            </ul>
+          </div>
+          <div class="step-nav">
+            <button type="button" class="btn" id="step2-back">← 戻る</button>
+            <button type="button" class="btn btn-primary" id="step2-next">次へ（デバイスを接続）</button>
+          </div>
+        </section>
+
+        <!-- ステップ 3: 接続・ポート選択 -->
+        <section class="step-panel" id="step-3" hidden>
+          <h2>③ USB ケーブルで接続する</h2>
+          <p class="step-desc">
+            デバイスを USB-C ケーブルでパソコンに接続し、「接続」ボタンを押してポートを選択してください。
+          </p>
+          <div class="connect-area" id="connect-area">
+            <button type="button" class="btn btn-primary btn-lg" id="connect-btn">接続してポートを選択</button>
+            <p class="muted small" id="connect-hint"></p>
+            <p class="muted small">選択ダイアログでは「USB Serial」や「/dev/cu.usbmodem*」などと表示されるポートを選んでください。</p>
+          </div>
+          <div class="error-box" id="connect-error" hidden>
+            <p class="error-title" id="connect-error-text"></p>
+            <p class="error-hint" id="connect-error-hint"></p>
+          </div>
+          <details class="help-box">
+            <summary>ポートの一覧にデバイスが表示されない場合</summary>
+            <ul>
+              <li><strong>充電専用ケーブル</strong>を使っている可能性があります。データ通信対応のケーブルに交換してください</li>
+              <li>ほかのタブやシリアルモニタがポートを占有していると接続できません。すべて閉じてから再試行してください</li>
+              <li>ブラウザを再起動すると解決することがあります</li>
+            </ul>
+          </details>
+          <div class="step-nav">
+            <button type="button" class="btn" id="step3-back">← 戻る</button>
+            <button type="button" class="btn btn-primary" id="step3-next" disabled>次へ（チップ認識）</button>
+          </div>
+        </section>
+
+        <!-- ステップ 4: チップ認識 -->
+        <section class="step-panel" id="step-4" hidden>
+          <h2>④ チップを確認する</h2>
+          <div id="chip-status" aria-live="polite">
+            <p class="muted">デバイスに接続してチップ情報を読み取っています…</p>
+            <div class="spinner" aria-hidden="true"></div>
+          </div>
+          <div class="chip-result" id="chip-result" hidden>
+            <p class="chip-name" id="chip-name"></p>
+            <p class="muted" id="chip-info"></p>
+            <p class="muted">書き込み先: <span id="chip-release" class="chip-release"></span></p>
+          </div>
+          <div class="warn-box" id="chip-warn" hidden>
+            <strong>警告: 期待するチップ（ESP32-S3）と異なります。</strong>
+            <p>
+              接続したデバイスはダウンロードモード（USB Serial/JTAG）で動作していない可能性があります。
+              ステップ②に戻り、電源ボタン約 2 秒長押し（緑 LED 点灯）でダウンロードモードに切り替えてから再試行してください。
+            </p>
+          </div>
+          <div class="error-box" id="chip-error" hidden>
+            <p class="error-title" id="chip-error-text"></p>
+            <p class="error-hint" id="chip-error-hint"></p>
+          </div>
+          <div class="step-nav">
+            <button type="button" class="btn" id="step4-back">← 戻る</button>
+            <button type="button" class="btn btn-primary" id="step4-next" disabled>次へ（書き込み設定）</button>
+          </div>
+        </section>
+
+        <!-- ステップ 5: 書き込み -->
+        <section class="step-panel" id="step-5" hidden>
+          <h2>⑤ ファームウェアを書き込む</h2>
+          <p class="step-desc">対象デバイス: <span id="flash-chip" class="chip-release"></span> / リリース: <span id="flash-release" class="chip-release"></span></p>
+
+          <fieldset class="mode-select">
+            <legend>書き込みモード</legend>
+            <label class="mode-option">
+              <input type="radio" name="flash-mode" id="mode-update" value="update" checked />
+              <span>
+                <strong>アプリ更新</strong>（firmware.bin のみ）
+                <span class="muted small">設定・ゲーム履歴（NVS）は温存されます</span>
+              </span>
+            </label>
+            <label class="mode-option">
+              <input type="radio" name="flash-mode" id="mode-full" value="full" />
+              <span>
+                <strong>初回フルフラッシュ</strong>（全消去 + bootloader / partitions / firmware の 3 点）
+                <span class="muted small">設定・ゲーム履歴（NVS）も消去されます</span>
+              </span>
+            </label>
+          </fieldset>
+          <div class="warn-box" id="erase-warn" hidden>
+            <strong>注意:</strong> フルフラッシュでは全消去（erase）を実行します。保存データ（ゲーム履歴・設定）はすべて消去されます。初回セットアップ以外では「アプリ更新」を選択してください。
+          </div>
+
+          <div class="flash-summary" id="flash-summary"></div>
+
+          <div class="flash-area">
+            <button type="button" class="btn btn-primary btn-lg" id="flash-btn">書き込みを開始（確認ダイアログを表示）</button>
+            <p class="muted small">書き込み中はタブを閉じたりケーブルを抜いたりしないでください。</p>
+          </div>
+
+          <div class="progress-area" id="progress-area" hidden>
+            <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+            <p class="progress-text" id="progress-text"></p>
+            <div class="warn-box"><strong>書き込み中です。</strong>タブを閉じず、ケーブルを抜かないでください。</div>
+          </div>
+
+          <div class="error-box" id="flash-error" hidden>
+            <p class="error-title" id="flash-error-text"></p>
+            <p class="error-hint" id="flash-error-hint"></p>
+          </div>
+
+          <div class="step-nav">
+            <button type="button" class="btn" id="step5-back">← 戻る</button>
+            <button type="button" class="btn btn-primary" id="step5-next" disabled>次へ（起動確認）</button>
+          </div>
+        </section>
+
+        <!-- ステップ 6: 起動確認 -->
+        <section class="step-panel" id="step-6" hidden>
+          <h2>⑥ 起動してバージョンを確認</h2>
+          <div class="device-card">
+            <div class="device-circle" aria-hidden="true"></div>
+            <ol class="device-steps">
+              <li><strong>電源ボタンを短押し</strong>してデバイスを起動してください</li>
+              <li>画面にライフカウンターが表示されることを確認してください</li>
+              <li>About 画面のバージョンが <span id="done-version" class="chip-release"></span> と一致することを確認してください</li>
+            </ol>
+          </div>
+          <details class="help-box">
+            <summary>起動しない場合</summary>
+            <ul>
+              <li>もう一度電源ボタンを短押ししてください（自動リセットのみでは起動しないことがあります）</li>
+              <li>それでも起動しない場合は、Boot ボタン（GPIO0）を押しながら USB-C ケーブルを抜き差しする強制ブートローダーモードで復旧を試みてください</li>
+            </ul>
+          </details>
+          <div class="step-nav">
+            <button type="button" class="btn" id="step6-back">← 戻る</button>
+            <button type="button" class="btn btn-primary" id="step6-restart">最初からやり直す</button>
+          </div>
+        </section>
+
+        <!-- 書き込み前確認モーダル -->
+        <div class="modal-overlay" id="confirm-modal" hidden>
+          <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+            <h3 id="confirm-title">書き込み内容の確認</h3>
+            <p id="confirm-chip-line"></p>
+            <div id="confirm-files" class="asset-table"></div>
+            <p class="muted small" id="confirm-total"></p>
+            <div class="warn-box" id="confirm-nvs-warn" hidden>
+              フルフラッシュでは全消去を実行します。設定・ゲーム履歴（NVS）は消去されます。
+            </div>
+            <div class="warn-box" id="confirm-hash-warn" hidden>
+              <strong>警告:</strong> SHA-256 の照合元（sha256sums.txt）がリリースに含まれていないため、
+              ダウンロードしたファイルの破損・改ざんを検出できません。
+              書き込みを続行するのは、初回実機検証などリリース内容を把握している場合のみにしてください。
+            </div>
+            <div class="modal-actions">
+              <button type="button" class="btn" id="confirm-cancel">キャンセル</button>
+              <button type="button" class="btn btn-danger" id="confirm-ok">書き込みを実行</button>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <footer class="app-footer">
+        <p class="muted small">
+          このページは Web Serial API（Chrome / Edge 対応）と esptool-js を使用しています。
+          書き込み中はブラウザのタブを閉じないでください。
+        </p>
+      </footer>
+    </div>
+    <script type="module" src="/src/install.ts"></script>
+  </body>
+</html>

@@ -176,7 +176,7 @@ export default {
     if (path.startsWith("/api/")) {
       return json({ error: "Not Found" }, 404);
     }
-    // 静的アセット配信（SPA のため not_found_handling で index.html にフォールバック）
+    // 静的アセット配信（MPA: 各ディレクトリの index.html を auto-trailing-slash で解決）
     return env.ASSETS.fetch(request);
   },
 };
