@@ -120,12 +120,24 @@ constexpr float kLockTextSize = 1.0f;  // "LOCK" ラベル (6x8 base x1.0)
 // フォントサイズ
 // ============================================================
 // M5GFX のデフォルトフォント (6x8 base) にスケールを掛ける。
-// textSize=7 で 1 文字約 42x56px、4 桁 "9999" で約 171px 幅
+// textSize=7 で 1 文字 42x56px、4 桁 "9999" で 168px 幅
 // → 180px 幅の領域に収まる。
+// 5 桁以上では lifeFontSizeForWidth() で自動縮小する
+// （5 桁→6.0、6 桁→5.0 など）。
 
-constexpr float kLifeFontSize    = 7.0f;  // メインのライフ数字
+constexpr float kLifeFontSize    = 7.0f;  // メインのライフ数字（4 桁以下）
 constexpr float kDeltaFontSize   = 3.0f;  // 差分表示 (+/-N)
 constexpr float kWarningFontSize = 2.5f;  // 警告 "!" マーク
+
+// 桁数に応じてライフ数字のフォントサイズを自動縮小する。
+// 6 * size * numChars <= kLifeRegionW を満たす最大の整数サイズを返し、
+// kLifeFontSize を上限とする。
+constexpr float lifeFontSizeForWidth(int numChars) {
+    float maxSize = static_cast<float>(kLifeRegionW) /
+                    (6.0f * static_cast<float>(numChars));
+    auto floored = static_cast<float>(static_cast<int>(maxSize));
+    return (floored < kLifeFontSize) ? floored : kLifeFontSize;
+}
 
 // プレビュー表示時の lifeCanvas_ 内描画座標
 // フォント 7.0 (高さ 56px) と 3.0 (高さ 24px) が重ならないよう配置する。
