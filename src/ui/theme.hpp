@@ -120,12 +120,38 @@ constexpr float kLockTextSize = 1.0f;  // "LOCK" ラベル (6x8 base x1.0)
 // フォントサイズ
 // ============================================================
 // M5GFX のデフォルトフォント (6x8 base) にスケールを掛ける。
-// textSize=5 で 1 文字約 30x40px、3 桁 "999" で約 90px 幅
-// → 180px 幅の領域に十分収まる。
+// textSize=7 で 1 文字 42x56px、4 桁 "9999" で 168px 幅
+// → 180px 幅の領域に収まる。
+// 5 桁以上では lifeFontSizeForWidth() で自動縮小する
+// （5 桁→6.0、6 桁→5.0 など）。
 
-constexpr float kLifeFontSize    = 5.0f;  // メインのライフ数字
+constexpr float kLifeFontSize    = 7.0f;  // メインのライフ数字（4 桁以下）
 constexpr float kDeltaFontSize   = 3.0f;  // 差分表示 (+/-N)
 constexpr float kWarningFontSize = 2.5f;  // 警告 "!" マーク
+
+// 桁数に応じてライフ数字のフォントサイズを自動縮小する。
+// 6 * size * numChars <= kLifeRegionW を満たす最大の整数サイズを返し、
+// kLifeFontSize を上限とする。
+constexpr float lifeFontSizeForWidth(int numChars) {
+    return static_cast<float>(
+               static_cast<int>(
+                   static_cast<float>(kLifeRegionW) /
+                   (6.0f * static_cast<float>(numChars))))
+           < kLifeFontSize
+        ? static_cast<float>(
+              static_cast<int>(
+                  static_cast<float>(kLifeRegionW) /
+                  (6.0f * static_cast<float>(numChars))))
+        : kLifeFontSize;
+}
+
+// プレビュー表示時の lifeCanvas_ 内描画座標
+// フォント 7.0 (高さ 56px) と 3.0 (高さ 24px) が重ならないよう配置する。
+//   ライフ数字: 中心 y=35 → [7, 63]
+//   差分テキスト: 中心 y=88 → [76, 100]
+//   間隔 13px、上端余白 7px、下端余白 20px
+constexpr int32_t kPreviewLifeCY  = 35;  // プレビュー時ライフ数字の中心 y
+constexpr int32_t kPreviewDeltaCY = 88;  // プレビュー時差分テキストの中心 y
 
 // ============================================================
 // 共通 UI 要素
@@ -163,7 +189,7 @@ constexpr int32_t kSetupHintY2 = 234;  // "A: 20/40 toggle"
 constexpr int32_t kSetupHintY3 = 256;  // "Hold B to START"
 
 // フォント
-constexpr float kSetupLifeFontSize   = 5.0f;  // ライフ数字
+constexpr float kSetupLifeFontSize   = 7.0f;  // ライフ数字
 constexpr float kSetupPresetFontSize = 1.5f;  // プリセット "20" "40"
 constexpr float kSetupHintFontSize   = 1.5f;  // 操作説明（通常行）
 constexpr float kSetupStartFontSize  = 2.0f;  // "Hold B to START"（強調）
