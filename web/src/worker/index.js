@@ -78,7 +78,9 @@ async function handleReleases(env) {
     Accept: "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28",
   };
-  if (env.GITHUB_TOKEN) headers.Authorization = `Bearer ${env.GITHUB_TOKEN}`;
+  // 空文字・空白のみのトークンは「未設定」として扱い、Authorization を付与しない
+  const token = (env.GITHUB_TOKEN ?? "").trim();
+  if (token) headers.Authorization = `Bearer ${token}`;
 
   let releases;
   try {
