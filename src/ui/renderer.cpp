@@ -1088,47 +1088,6 @@ void Renderer::drawHoldProgress(uint8_t percent) {
                            fromAngle, toAngle, theme::kHoldArcTrackColor);
     }
 
-    // --- テキスト "HOLD XX%" ---
-    // 背景色つき描画 (setTextColor(前景, 背景)) で消去と描画を 1 パスにする。
-    // percent が変わったときだけここに到達する（同値は早期リターンで除外済み）。
-    // 色だけでなく数値テキストで進捗量を伝える（色覚差対応: docs/05-ui-ux.md）。
-    //
-    // 減少時はテキスト幅が縮むため、旧テキストの端に残像が残りうる。
-    // 描画前にテキスト領域をバッジ背景色でクリアして防ぐ。
-    // 増加時は新テキストが旧テキストを完全に覆う（中央揃えで幅が増える）ため
-    // クリア不要だが、統一的にクリアしても矩形が小さく (≈2.5 KB) コストは無視できる。
-    if (pct < lastHoldPercent_) {
-        // テキスト幅が縮む可能性があるため残像を防止する。
-        // "HOLD 100%" = 9文字 * 9px (6px * 1.5) = 81px 幅。余裕を持って 90px。
-        // 高さ = 8px * 1.5 = 12px。余裕を持って 16px。
-        constexpr int32_t kTextClearW = 90;
-        constexpr int32_t kTextClearH = 16;
-        int32_t textClearX = cx - kTextClearW / 2;
-        int32_t textClearY = theme::kHoldTextY - kTextClearH / 2;
-        if (canvasReady_) {
-            canvas_.fillRect(textClearX, textClearY,
-                             kTextClearW, kTextClearH,
-                             theme::kHoldTextBgColor);
-        }
-        M5.Display.fillRect(textClearX, textClearY,
-                            kTextClearW, kTextClearH,
-                            theme::kHoldTextBgColor);
-    }
-
-    char buf[16];
-    snprintf(buf, sizeof(buf), "HOLD %u%%", static_cast<unsigned>(pct));
-
-    if (canvasReady_) {
-        canvas_.setTextDatum(middle_center);
-        canvas_.setTextSize(theme::kHoldTextSize);
-        canvas_.setTextColor(theme::kHoldTextColor, theme::kHoldTextBgColor);
-        canvas_.drawString(buf, cx, theme::kHoldTextY);
-    }
-    M5.Display.setTextDatum(middle_center);
-    M5.Display.setTextSize(theme::kHoldTextSize);
-    M5.Display.setTextColor(theme::kHoldTextColor, theme::kHoldTextBgColor);
-    M5.Display.drawString(buf, cx, theme::kHoldTextY);
-
     lastHoldPercent_ = pct;
 }
 
