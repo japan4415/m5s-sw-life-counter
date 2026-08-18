@@ -443,7 +443,7 @@ void Renderer::renderLifeRegion(uint32_t life, int32_t previewDelta,
         char lifeBuf[16];
         snprintf(lifeBuf, sizeof(lifeBuf), "%u",
                  static_cast<unsigned>(previewLife));
-        lifeCanvas_.drawString(lifeBuf, cx, theme::kLifeRegionH / 3);
+        lifeCanvas_.drawString(lifeBuf, cx, theme::kPreviewLifeCY);
 
         // 差分（領域下部）
         // 色と +/- 符号の両方で方向を示す（色覚差対応:
@@ -457,7 +457,7 @@ void Renderer::renderLifeRegion(uint32_t life, int32_t previewDelta,
         char deltaBuf[16];
         snprintf(deltaBuf, sizeof(deltaBuf), "%+d",
                  static_cast<int>(previewDelta));
-        lifeCanvas_.drawString(deltaBuf, cx, theme::kLifeRegionH * 2 / 3);
+        lifeCanvas_.drawString(deltaBuf, cx, theme::kPreviewDeltaCY);
 
         if (isZero) {
             // プレビュー中のゼロ警告は枠線のみ表示する。
