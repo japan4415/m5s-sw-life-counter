@@ -8,6 +8,9 @@
  * 接続戦略: ユーザーが電源ボタン長押しでダウンロードモードに入っている前提のため、
  * 接続は main("no_reset")、書き込み後も after("no_reset") でリセットせず、
  * 電源ボタン短押しによる手動リセットを案内する。
+ *
+ * NOTE: このモジュールは install.ts 経由で読み込まれる想定です（nav の注入を含む）。
+ * install/index.html から直接 /src/main.ts を参照しないでください。
  */
 import { ESPLoader, Transport } from "esptool-js";
 import type { LoaderOptions } from "esptool-js";

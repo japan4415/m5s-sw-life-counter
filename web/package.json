@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "description": "M5Stack StopWatch (ESP32-S3) ファームウェア書き込み Web アプリ",
+  "packageManager": "yarn@1.22.22",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

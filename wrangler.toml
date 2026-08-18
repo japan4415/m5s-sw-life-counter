@@ -1,0 +1,31 @@
+name = "m5s-sw-life-counter-flasher"
+main = "web/src/worker/index.js"
+compatibility_date = "2026-08-01"
+
+# デプロイ前にビルドを自動実行する
+# Workers Builds ではビルドコマンド未設定でも、この設定によりビルドが走る
+# NOTE: ビルド環境の yarn は 4 系だが、web/yarn.lock は Yarn 1（classic）形式。
+# ambient な yarn をそのまま使うと lockfile 自動移行 → immutable モード違反 (YN0028) で
+# ビルドが失敗するため、npx で Yarn 1.22.22 をバージョン固定して呼び出す。
+[build]
+command = "cd web && npx --yes yarn@1.22.22 install --frozen-lockfile && npx --yes yarn@1.22.22 build"
+
+# 静的アセット (vite build の出力) をそのまま配信する
+[assets]
+directory = "./web/dist"
+binding = "ASSETS"
+not_found_handling = "404-page"
+html_handling = "auto-trailing-slash"
+
+# GitHub Releases の取得元リポジトリ（所有者/リポジトリ名）
+[vars]
+GITHUB_REPO = "japan4415/m5s-sw-life-counter"
+
+# カスタムドメイン（workers.dev サブドメインも引き続き有効）
+[[routes]]
+pattern = "m5s-sw-life-counter.discord.jp"
+custom_domain = true
+
+# レートリミット緩和のためのシークレット（任意）
+#   wrangler secret put GITHUB_TOKEN
+# 未設定の場合は認証なし（60 req/h）で動作する

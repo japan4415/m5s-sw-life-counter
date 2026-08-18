@@ -71,6 +71,41 @@ pio run -t upload --upload-port /dev/cu.usbmodem<実際のポート番号>
 - 設計を追う人: 04 → 05 → 06 → 07 → 08 の順に読むと、要件からアーキテクチャまで一貫して理解できる
 - 実装計画を知りたい人: 12 を参照
 
+## Web ページ
+
+`web/` ディレクトリに Vite ベースの MPA（マルチページアプリケーション）を構成している。Cloudflare Workers + Assets で配信。
+
+| パス | 内容 |
+|------|------|
+| `/` | 紹介ページ（プロダクト概要・各ページへの導線） |
+| `/install` | ファームウェア書き込みウィザード（Web Serial + esptool-js） |
+| `/guide` | 使い方ガイド（セットアップ・操作方法・トラブルシューティング） |
+| `/features` | 機能一覧（全機能の詳細解説） |
+
+### Cloudflare Workers Builds の設定
+
+デプロイに必要な設定はすべてリポジトリルートの `wrangler.toml` に集約されている。Cloudflare ダッシュボードの Workers Builds では以下の既定値のままでよい。
+
+| 設定項目 | 値 |
+|---|---|
+| ルートディレクトリ | `/`（既定値） |
+| ビルドコマンド | 未設定（既定値） |
+| デプロイコマンド | `npx wrangler versions upload` |
+
+`wrangler.toml` の `[build]` セクションにより、デプロイ前にビルドが自動実行される。ダッシュボード側でビルドコマンドやルートディレクトリを変更する必要はない。
+
+> **Yarn バージョンの固定**: `web/yarn.lock` は Yarn 1（classic）形式だが、Cloudflare Workers Builds のビルド環境には Yarn 4 系がインストールされている。Yarn 4 は旧形式の lockfile を自動移行しようとするが、immutable モードでは lockfile の変更が禁止されているためビルドが失敗する（`YN0028`）。これを回避するため、`wrangler.toml` のビルドコマンドでは `npx yarn@1.22.22` により Yarn 1 系をバージョン固定で呼び出している。`web/package.json` の `packageManager` フィールドでも同バージョンを指定しており、corepack 有効環境でのローカル開発でも Yarn 1 が使われる。
+
+### 手動デプロイ
+
+ローカルから手動でデプロイする場合、リポジトリルートで以下を実行する:
+
+```bash
+wrangler deploy
+```
+
+`wrangler.toml` の `[build]` セクションにより、ビルドも自動で実行される。
+
 ## 対象ハードウェア
 
 - **製品名**: M5Stack StopWatch Dev Kit (ESP32-S3)
