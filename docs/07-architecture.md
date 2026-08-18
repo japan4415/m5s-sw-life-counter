@@ -26,6 +26,7 @@ FaB ライフカウンターのソフトウェア構成、レイヤ設計、メ�
 ├───────────────────────────────────┤
 │ MatchModel          InputController │
 │ LifeService         GestureDetector │
+│ ScreenState         ButtonInput     │
 ├───────────────────────────────────┤
 │ Renderer            Storage        │
 │ Haptics             PowerManager   │
@@ -43,6 +44,8 @@ FaB ライフカウンターのソフトウェア構成、レイヤ設計、メ�
 | AppController | アプリケーション状態の管理、画面遷移制御、入力イベントの振り分け |
 | MatchModel / LifeService | ドメインロジック（ライフ変更、Undo、履歴管理）。ハードウェア非依存 |
 | InputController / GestureDetector | タッチ入力の受信、極座標変換、外周スライドジェスチャーの検出、サンプル間経過時間に基づく角速度異常値判定。ジェスチャー検出ロジック自体はハードウェア非依存 |
+| ButtonInput | 物理ボタン A/B の押下状態から短押し・長押し・A+B 同時押しを判定する状態機械。ハードウェア非依存（押下状態と時刻を引数で受け取る） |
+| ScreenState | 画面遷移（Setup / Active / Menu / History / About）とメニュー選択の状態機械。ハードウェア非依存 |
 | Renderer | M5GFX を使った画面描画。PSRAM 上の Canvas への描画と転送 |
 | Storage | NVS への永続化（MVP）。保存スケジューリングとスロットローテーション |
 | Haptics | 振動モーターの制御。パターン再生とタイミング管理 |
@@ -55,51 +58,50 @@ FaB ライフカウンターのソフトウェア構成、レイヤ設計、メ�
 ## ディレクトリ構成
 
 ```
-src/
-├── main.cpp
-├── app/app_controller.cpp/.hpp
+lib/counter_core/          ← ハードウェア非依存の純ロジック（ホストテスト対象）
+├── library.json
+├── app_config.hpp
 ├── domain/
 │   ├── match_state.hpp
 │   ├── life_service.cpp/.hpp
-│   ├── command.hpp
 │   └── life_change.hpp
 ├── input/
-│   ├── input_controller.cpp
-│   ├── gesture_detector.cpp
-│   └── touch_zone.cpp
-├── ui/
-│   ├── renderer.cpp
-│   ├── game_screen.cpp
-│   ├── setup_screen.cpp
-│   ├── menu_screen.cpp
-│   └── theme.hpp
-├── infra/
-│   ├── storage_nvs.cpp
-│   ├── haptics_m5.cpp
-│   ├── power_m5.cpp
-│   └── battery_m5.cpp
-└── config/app_config.hpp
+│   ├── gesture_detector.cpp/.hpp
+│   └── button_input.cpp/.hpp    ← Phase 2 追加: ボタン状態機械
+└── app/
+    └── screen_state.cpp/.hpp    ← Phase 2 追加: 画面状態機械
 
-test/
-├── life_service_test.cpp
-├── undo_test.cpp
-├── persistence_test.cpp
-└── gesture_test.cpp
+src/                       ← ハードウェア依存コード（実機ビルド専用）
+├── main.cpp
+├── app/app_controller.cpp/.hpp
+├── ui/
+│   ├── renderer.cpp/.hpp
+│   └── theme.hpp
+└── infra/
+    ├── haptics_m5.cpp/.hpp
+    └── （将来: storage_nvs, power_m5 等）
+
+test/                      ← ホスト PC 上で実行する単体テスト
+├── test_domain/test_domain.cpp
+├── test_gesture/test_gesture.cpp
+└── test_button/test_button.cpp  ← Phase 2 追加: ボタン状態機械テスト
 ```
+
+**なぜ `lib/counter_core/` に置くのか**: PlatformIO では `src/` が native ビルドの対象外であり、`pio test -e native` からソースを参照できない。`lib/` に配置することで、実機ビルド（`[env:m5stack]`）とホストテスト（`[env:native]`）の両方から自然にリンクできる。設計書の当初の `src/domain/` 等の配置は、この PlatformIO の制約により `lib/counter_core/` に移動した。
 
 ### 各ディレクトリの役割
 
 | ディレクトリ | 役割 | ホストテスト対象 |
 |---|---|---|
-| `src/domain/` | ドメインロジック。ライフ変更、Undo、履歴管理、型定義 | **対象** |
-| `src/input/` | 入力処理。ジェスチャー検出、角度計算、タッチ領域判定 | **対象**（純関数部分） |
-| `src/app/` | アプリケーション制御。状態遷移、コマンド振り分け | 部分的に対象 |
+| `lib/counter_core/domain/` | ドメインロジック。ライフ変更、Undo、履歴管理、型定義 | **対象** |
+| `lib/counter_core/input/` | 入力処理。ジェスチャー検出、角度計算、ボタン状態機械 | **対象** |
+| `lib/counter_core/app/` | 画面状態機械。画面遷移、メニュー選択。ハードウェア非依存 | **対象** |
+| `src/app/` | アプリケーション制御。M5Unified に依存する結線層 | 非対象 |
 | `src/ui/` | 画面描画。M5GFX 依存 | 非対象 |
-| `src/infra/` | ハードウェア依存の実装。NVS、振動、電源 | **非対象** |
-| `src/config/` | 設定定数の集約 | 対象 |
+| `src/infra/` | ハードウェア依存の実装。振動、電源（将来: NVS） | **非対象** |
 | `test/` | ホスト PC 上で実行する単体テスト | -- |
 
-**`domain/` と `input/` の純関数部分はホストテスト対象であり、`infra/` はハードウェア依存**である。この線引きにより、ドメインロジックとジェスチャー検出ロジックを実機なしで検証できる。
+**`lib/counter_core/` 配下のすべてのコードはハードウェア非依存であり、ホストテスト対象**である。`src/` 配下は M5Unified / M5GFX に依存し、ホストテストからは参照しない。
 
 ---
 
@@ -262,16 +264,21 @@ LVGL は使用せず、M5GFX で直接描画する。
 
 アプリケーションは **アプリ状態** と **電源状態** の 2 軸を直交して管理する。
 
-### アプリ状態
+### アプリ状態（画面状態）
+
+実装の `Screen` 列挙に対応する 5 つの画面状態:
 
 | 状態 | 意味 |
 |---|---|
-| `BOOT` | 起動直後。NVS の読み込みと復元判定を行う |
-| `RESTORE_PROMPT` | 保存済みゲームが見つかった場合の復元確認画面 |
-| `SETUP` | 初期ライフ設定画面 |
+| `SETUP` | 初期ライフ設定画面。外周スライドで開始ライフを増減する |
 | `ACTIVE` | ゲーム進行中。外周スライドによるライフ変更を受け付ける |
-| `LOCKED` | タッチロック中。タッチ入力は無効だが物理ボタンは有効 |
-| `MENU` | ゲームメニュー表示中 |
+| `MENU` | ゲームメニュー表示中。ボタンのみで操作する |
+| `HISTORY` | 直近のライフ変更履歴を一覧表示する |
+| `ABOUT` | ファームウェア情報を表示する |
+
+**ロック（LOCKED）は画面状態ではなく `MatchState::touchLocked` フラグ**で管理する。ロック中もメニューやボタン操作は通常どおり動作するため、画面遷移として扱う必要がない。
+
+**BOOT / RESTORE_PROMPT は Phase 3（永続化）で追加予定。** 永続化が未実装のため、現在の実装にはこれらの状態は存在しない。
 
 ### 電源状態
 
@@ -357,6 +364,7 @@ MVP は Arduino Framework で実装する。将来的に細かい省電力制御
 - **振動強度（255 固定）** -- 32〜192 は体感できず、255 のみ体感可能（Phase 0 Step 5）
 - **最小体感振動時間（20 ms）** -- 強度 255 で確実に体感できる下限（Phase 0 Step 5）
 - **感度角（36 度 / 1 ライフ）** -- Phase 1 実機評価で確定（2026-08-17〜18）。旧設計値 10 度/ライフから変更
+- **長押ししきい値（1000 ms）** -- Phase 2 実機評価で確定（2026-08-18）。A+B 長押しと単独長押しを統一
 - 最低移動角（6 度） -- 未検証
 - 無操作タイムアウト（90 秒で減光）
 - 各振動パターンの持続時間 -- 提案値あり（[UI/UX 設計](./05-ui-ux.md) 参照）、通しの体感評価は未実施
