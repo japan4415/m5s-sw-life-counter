@@ -3,6 +3,7 @@
 #include <Preferences.h>
 #include <esp_crc.h>
 
+#include <cassert>
 #include <cstdio>
 #include <cstring>
 
@@ -87,8 +88,13 @@ bool StorageNvs::begin() {
             continue;
         }
 
-        // 全検証合格 — sequence 最大のものを採用する
-        if (!hasValid_ || rec.sequence > currentSeq_) {
+        // 全検証合格 — sequence が最も新しいものを採用する。
+        // 符号付き差分比較により、sequence が 0xFFFFFFFF を超えて
+        // ラップアラウンドしても正しく新旧を判定できる。
+        // 例: currentSeq_=0xFFFFFFFE, rec.sequence=0x00000001 のとき
+        //     (int32_t)(0x00000001 - 0xFFFFFFFE) = 3 > 0 → rec が新しい
+        if (!hasValid_ ||
+            static_cast<int32_t>(rec.sequence - currentSeq_) > 0) {
             hasValid_ = true;
             currentSlot_ = i;
             currentSeq_ = rec.sequence;
@@ -130,6 +136,9 @@ bool StorageNvs::save(const counter::domain::MatchState& state) {
     Preferences prefs;
     if (!prefs.begin("lifectr", false)) {
         Serial.println("[StorageNvs] save: NVS を開けませんでした");
+        // begin() 失敗時はハンドル未取得だが、全パスで end() を呼んで
+        // 後片付けを統一する（Preferences::end() は未初期化時でも安全）。
+        prefs.end();
         return false;
     }
 
@@ -159,6 +168,10 @@ bool StorageNvs::hasValidState() const {
 }
 
 const counter::domain::MatchState& StorageNvs::loadedState() const {
+    // hasValidState() が false のときに呼ぶのは誤用。
+    // デバッグビルドでのみ検出し、リリースビルドでは assert が除去されるため
+    // 動作変更やクラッシュを招かない。
+    assert(hasValid_ && "loadedState() は hasValidState() が true のときのみ呼ぶこと");
     return loadedState_;
 }
 

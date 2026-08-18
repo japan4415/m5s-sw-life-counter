@@ -314,7 +314,7 @@ MVP では単一の `loop()` 関数で全処理を実行する。複雑なマル
 | Match Engine Task | 唯一の状態変更主体。ドメインロジックの実行 |
 | Event Store Task | LittleFS へのイベント追記、CRC 検証、NVS スナップショット |
 | BLE Task | GATT サーバー、接続管理、イベント送受信、分割転送 |
-| Power / RTC Task | バッテリー管理、時刻同期、スリープ制御 |
+| Power / RTC Task | バッテリー管理、時刻同期 |
 
 タスク間はコマンドキューで通信し、状態変更は Match Engine Task に集約する:
 

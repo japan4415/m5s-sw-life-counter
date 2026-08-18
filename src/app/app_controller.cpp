@@ -91,10 +91,10 @@ void AppController::begin() {
     haptics_.begin();
     storage_.begin();
 
-    // NVS に有効な試合状態があれば復元して Active 画面で再開する。
-    // 電源 OFF → ON でも前回の試合を即座に再開できる。
-    // 確認ダイアログは挟まない（電源 OFF 前の画面をそのまま復帰させる）。
-    if (storage_.hasValidState()) {
+    // NVS に有効な試合状態があり、かつ試合が進行中 (active) の場合のみ
+    // 復元して Active 画面で再開する。active が false の状態（例: NewGame で
+    // Setup に遷移した直後に電源が切れた場合）は復元せず、通常の初期化から始める。
+    if (storage_.hasValidState() && storage_.loadedState().active) {
         state_ = storage_.loadedState();
         screenState_.enterActive();
         renderer_.drawAll(state_);
@@ -646,8 +646,9 @@ void AppController::executeScreenAction(ScreenAction action) {
         screenState_.setSetupLife(PlayerId::Bottom,
                                  state_.players[1].startingLife);
         // setSetupLife が dirty を立てるので、consumeDirty → drawSetup で反映される
-        // NewGame 時点での状態を NVS に永続化する。
-        storage_.save(state_);
+        // ここでは storage_.save() を呼ばない。NewGame は試合開始前（Setup 遷移）であり、
+        // state_.active が前試合の true のまま保存すると、電源 OFF→ON で前試合に戻ってしまう。
+        // 新しい試合は StartMatch 確定時に保存される。
         break;
 
     case ScreenAction::SwapSides:
