@@ -31,34 +31,32 @@ constexpr const char* kPlayerLabel[edh::kPlayerCount] = {
 };
 
 // 各扇形の画面上の左上座標（pushSprite の転送先）
-// X 字分割を矩形近似で実装するため、画面を 2x2 の象限に分割する。
-// 各プレイヤーの扇形（三角形）は 1 つの象限にマッピングする。
-// 三角形の頂点（画面中心）が象限の角に来るよう配置する。
 //
-//   P1(上)→左上象限(0,0):     頂点は象限の右下角（=画面中心）
-//   P2(右)→右上象限(234,0):   頂点は象限の左下角（=画面中心）
-//   P3(下)→右下象限(234,234): 頂点は象限の左上角（=画面中心）
-//   P4(左)→左下象限(0,234):   頂点は象限の右上角（=画面中心）
+// 【方針】各プレイヤーのキャンバス (234x234) を、そのプレイヤーの三角形の
+// 中心軸上に来る位置へ転送する。selectSector() は対角線 (|dy| vs |dx|) で
+// 画面を 4 つの三角形に分けるため、各三角形の中心軸は上下左右の方向。
+// キャンバス中心がその三角形の内側に入るよう転送先を決める。
 //
-// 各象限の矩形は 234x234 で、扇形の三角形はその対角線で半分を占める。
-// 残り半分には隣接プレイヤーの領域が侵入するが、分割線で視覚的に隠す。
+// 【検算】画面: 468x468, 中心 (234,234), キャンバス: 234x234
+//   P1(上, rot=2): 転送先 (117, 0)   → 中心 (234, 117)
+//     selectSector(234,117): dx=0, dy=-117, |dy|>|dx|, dy<0 → P1 ✓
+//   P2(右, rot=3): 転送先 (234, 117) → 中心 (351, 234)
+//     selectSector(351,234): dx=117, dy=0, |dx|>|dy|, dx>0 → P2 ✓
+//   P3(下, rot=0): 転送先 (117, 234) → 中心 (234, 351)
+//     selectSector(234,351): dx=0, dy=117, |dy|>|dx|, dy>0 → P3 ✓
+//   P4(左, rot=1): 転送先 (0, 117)   → 中心 (117, 234)
+//     selectSector(117,234): dx=-117, dy=0, |dx|>|dy|, dx<0 → P4 ✓
 //
-// 実機調整前提: 回転 + pushSprite の結果が期待通りかは実機確認が必要。
-constexpr int32_t kSectorX[edh::kPlayerCount] = {0, 234, 234, 0};
-constexpr int32_t kSectorY[edh::kPlayerCount] = {0, 0, 234, 234};
-
-// P3(下) は pushSprite 先を (0, 234) にしないと位置がずれる。
-// ただし rot=0 なので描画は「そのまま」下半分の下象限に対応する。
-// 実際のマッピング:
-//   P1(rot2): キャンバス内で 180° 回転して描画 → (0,0) に転送
-//   P2(rot3): キャンバス内で 270° 回転して描画 → (234,0) に転送
-//   P3(rot0): キャンバス内で回転なしで描画 → (0,234) に転送
-//   P4(rot1): キャンバス内で 90° 回転して描画 → (0,234) に転送
+// 【キャンバスの重なり】隣接するキャンバスの角同士が重なる。
+//   P1 の右下角 (117+234, 0+234) = (351, 234) は P2 の左上角 (234, 117) と
+//   重なる領域を持つ。テキストはキャンバス中心付近に描画するため、
+//   角の重なりに数字がかかることは通常ない。描画順は P1→P2→P3→P4 で、
+//   最後に drawDividers() で X 字分割線を上書きして境界を明示する。
 //
-// 修正: 各プレイヤーの転送先は回転後のピクセル配置に依存する。
-// M5Canvas::setRotation() はピクセルの論理→物理マッピングを変更するが、
-// pushSprite は常に物理バッファの左上から転送する。
-// したがって、回転によらず転送先座標は「扇形が画面上で占める矩形の左上」。
+// 【要実機検証】角の重なり部分で背景色が上書きされる影響、および回転テキストの
+// 位置が期待通りかは実機確認が必要。
+constexpr int32_t kSectorX[edh::kPlayerCount] = {117, 234, 117, 0};
+constexpr int32_t kSectorY[edh::kPlayerCount] = {0, 117, 234, 117};
 
 }  // namespace
 
@@ -94,8 +92,14 @@ void EdhRenderer::begin() {
             edh_theme::kSectorCanvasW, edh_theme::kSectorCanvasH);
         if (sectorBuf == nullptr) {
             Serial.println(
-                "[EdhRenderer] ERROR: sector canvas allocation failed.");
+                "[EdhRenderer] ERROR: sector canvas allocation failed. "
+                "Sector drawing will be skipped.");
+            sectorReady_ = false;
+        } else {
+            sectorReady_ = true;
         }
+    } else {
+        sectorReady_ = true;
     }
 }
 
@@ -112,18 +116,20 @@ void EdhRenderer::drawAll(const edh::MatchState& state,
     target->fillScreen(edh_theme::kBgColor);
     lastHoldPercent_ = 0;
 
-    // 4 プレイヤーの扇形を描画する
-    for (uint8_t i = 0; i < edh::kPlayerCount; ++i) {
-        const uint8_t rot = edh_theme::kPlayerRotation[i];
+    // 4 プレイヤーの扇形を描画する（sectorCanvas_ が確保済みの場合のみ）
+    if (sectorReady_) {
+        for (uint8_t i = 0; i < edh::kPlayerCount; ++i) {
+            const uint8_t rot = edh_theme::kPlayerRotation[i];
 
-        // ビュー状態に応じて描画内容を切り替える
-        if (screenState.playerView(i) == edh::app::PlayerView::CmdDamageView) {
-            renderCmdDamageView(state, screenState, i, 0, rot);
-        } else {
-            renderLifeView(state, i, 0, rot);
+            // ビュー状態に応じて描画内容を切り替える
+            if (screenState.playerView(i) == edh::app::PlayerView::CmdDamageView) {
+                renderCmdDamageView(state, screenState, i, 0, rot);
+            } else {
+                renderLifeView(state, i, 0, rot);
+            }
+
+            pushSectorToScreen(target, i);
         }
-
-        pushSectorToScreen(target, i);
     }
 
     // 分割線を描画して扇形の境界を明示する
@@ -143,6 +149,10 @@ void EdhRenderer::drawPlayerSector(const edh::MatchState& state,
                                     uint8_t playerIndex,
                                     int32_t previewDelta,
                                     bool isCommanderDmg) {
+    if (!sectorReady_) {
+        return;  // sectorCanvas_ 未確保時はスキップ
+    }
+
     const uint8_t rot = edh_theme::kPlayerRotation[playerIndex];
 
     if (isCommanderDmg ||
@@ -403,19 +413,24 @@ void EdhRenderer::pushSectorToScreen(LovyanGFX* target, uint8_t playerIndex) {
 // ============================================================
 
 void EdhRenderer::drawDividers(LovyanGFX* target) {
-    // X 字の対角線を描画する。(0,0)-(468,468) と (468,0)-(0,468)。
-    // drawLine は 1px 線なので、太さ kDividerWidth に応じて複数本描く。
-    const int32_t w = config::kDisplayWidth;
-    const int32_t h = config::kDisplayHeight;
+    // X 字の対角線を描画する: (0,0)-(467,467) と (467,0)-(0,467)。
+    // 座標は画面内（0..467）に収める。
+    // drawLine は 1px 線なので、太さ kDividerWidth に応じてオフセットして複数本描く。
+    const int32_t w = config::kDisplayWidth;   // 468
+    const int32_t h = config::kDisplayHeight;  // 468
 
     for (int32_t d = 0; d < edh_theme::kDividerWidth; ++d) {
-        // 右下がりの対角線 (\)
-        target->drawLine(d, 0, w - 1 + d, h - 1, edh_theme::kDividerColor);
-        target->drawLine(0, d, w - 1, h - 1 + d, edh_theme::kDividerColor);
+        // 右下がりの対角線 (\) — d でオフセットして太くする
+        target->drawLine(0, d, w - 1, h - 1 - d, edh_theme::kDividerColor);
+        if (d > 0) {
+            target->drawLine(d, 0, w - 1, h - 1 - d, edh_theme::kDividerColor);
+        }
 
-        // 右上がりの対角線 (/)
-        target->drawLine(w - 1 - d, 0, 0 - d, h - 1, edh_theme::kDividerColor);
-        target->drawLine(w - 1, d, 0, h - 1 + d, edh_theme::kDividerColor);
+        // 右上がりの対角線 (/) — d でオフセットして太くする
+        target->drawLine(w - 1, d, 0, h - 1 - d, edh_theme::kDividerColor);
+        if (d > 0) {
+            target->drawLine(w - 1 - d, 0, 0, h - 1 - d, edh_theme::kDividerColor);
+        }
     }
 }
 
@@ -434,10 +449,14 @@ void EdhRenderer::drawLockState(const edh::MatchState& state) {
         }
         drawLockIcon(&M5.Display);
     } else {
+        // クリア後に分割線を再描画する。clearLockRegion が中央領域を
+        // 背景色で塗りつぶすため、X 字分割線が欠けてしまう。
         if (canvasReady_) {
             clearLockRegion(&canvas_);
+            drawDividers(&canvas_);
         }
         clearLockRegion(&M5.Display);
+        drawDividers(&M5.Display);
     }
 }
 

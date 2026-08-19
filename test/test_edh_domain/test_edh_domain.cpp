@@ -135,6 +135,8 @@ void test_commander_damage_upper_clamp(void) {
     // ダメージを 98 にする
     applyCommanderDamage(ms, 0, 1, +98, 100);
     TEST_ASSERT_EQUAL_UINT8(98, ms.players[0].commanderDamageFrom[1]);
+    // ライフは 40 - 98 → 0 にクランプされている
+    TEST_ASSERT_EQUAL_UINT32(0, ms.players[0].life);
 
     // +5 → 99 にクランプ（実際の変化量は +1）
     LifeChange lc = applyCommanderDamage(ms, 0, 1, +5, 200);
@@ -142,9 +144,12 @@ void test_commander_damage_upper_clamp(void) {
     TEST_ASSERT_EQUAL_UINT8(99, ms.players[0].commanderDamageFrom[1]);
     TEST_ASSERT_EQUAL_UINT8(98, lc.cmdDmgBefore);
     TEST_ASSERT_EQUAL_UINT8(99, lc.cmdDmgAfter);
-    // ライフ連動は実際の変化量 1 の符号反転 → -1
-    // ライフは 40 - 98 = 0（前の操作でクランプ済み）なので -1 → 0 のまま
-    // いや、40 - 98 は 0 にクランプされるはず
+    // ライフ連動は実際の変化量 1 の符号反転 → -1 だが、ライフ 0 なので 0 のまま
+    TEST_ASSERT_EQUAL_UINT32(0, ms.players[0].life);
+    TEST_ASSERT_EQUAL_UINT32(0, lc.lifeBefore);
+    TEST_ASSERT_EQUAL_UINT32(0, lc.lifeAfter);
+    // delta にはクランプ後の実際のダメージ変化量 +1 が入る（要求 +5 ではない）
+    TEST_ASSERT_EQUAL_INT16(1, lc.delta);
 }
 
 // 統率者ダメージ上限クランプ時のライフ連動量
@@ -333,6 +338,65 @@ void test_sequence_monotonically_increases(void) {
 }
 
 // ========================================================================
+// delta にクランプ後の実際の変化量が格納されること
+// ========================================================================
+
+// 統率者ダメージ 2 で -5 → delta == -2（要求 -5 ではなく実際の変化量）
+void test_delta_reflects_clamped_cmd_damage(void) {
+    applyCommanderDamage(ms, 0, 1, +2, 100);
+    LifeChange lc = applyCommanderDamage(ms, 0, 1, -5, 200);
+
+    // クランプ後の実際のダメージ変化量は -2（2 → 0）
+    TEST_ASSERT_EQUAL_INT16(-2, lc.delta);
+    TEST_ASSERT_EQUAL_UINT8(0, lc.cmdDmgAfter);
+}
+
+// 統率者ダメージ上限クランプ: delta == +2（要求 +5、97 → 99）
+void test_delta_reflects_upper_clamped_cmd_damage(void) {
+    startMatch(ms, 100);
+    applyCommanderDamage(ms, 0, 1, +97, 100);
+
+    LifeChange lc = applyCommanderDamage(ms, 0, 1, +5, 200);
+
+    // クランプ後の実際のダメージ変化量は +2（97 → 99）
+    TEST_ASSERT_EQUAL_INT16(2, lc.delta);
+    TEST_ASSERT_EQUAL_UINT8(99, lc.cmdDmgAfter);
+}
+
+// ライフ 0 付近でのクランプ: delta == -2（要求 -5、ライフ 2 → 0）
+void test_delta_reflects_clamped_life(void) {
+    applyLifeChange(ms, 0, -38, 100);  // ライフ 2
+    TEST_ASSERT_EQUAL_UINT32(2, ms.players[0].life);
+
+    LifeChange lc = applyLifeChange(ms, 0, -5, 200);
+
+    // クランプ後の実際のライフ変化量は -2（2 → 0）
+    TEST_ASSERT_EQUAL_INT16(-2, lc.delta);
+    TEST_ASSERT_EQUAL_UINT32(0, lc.lifeAfter);
+    TEST_ASSERT_EQUAL_UINT32(2, lc.lifeBefore);
+}
+
+// ライフ 0 で -1 → delta == 0（変化なし）
+void test_delta_zero_when_life_already_zero(void) {
+    applyLifeChange(ms, 0, -40, 100);  // ライフ 0
+    TEST_ASSERT_EQUAL_UINT32(0, ms.players[0].life);
+
+    LifeChange lc = applyLifeChange(ms, 0, -1, 200);
+
+    // 既に 0 なのでクランプ後の変化量は 0
+    TEST_ASSERT_EQUAL_INT16(0, lc.delta);
+}
+
+// クランプなしの通常操作: delta == 要求量と一致
+void test_delta_matches_request_without_clamp(void) {
+    LifeChange lc = applyLifeChange(ms, 0, -3, 100);
+    TEST_ASSERT_EQUAL_INT16(-3, lc.delta);
+
+    LifeChange lc2 = applyCommanderDamage(ms, 0, 1, +7, 200);
+    TEST_ASSERT_EQUAL_INT16(7, lc2.delta);
+}
+
+// ========================================================================
 
 int main(int argc, char** argv) {
     UNITY_BEGIN();
@@ -373,6 +437,13 @@ int main(int argc, char** argv) {
     RUN_TEST(test_start_match_initial_life);
     RUN_TEST(test_rematch_resets_all);
     RUN_TEST(test_sequence_monotonically_increases);
+
+    // delta にクランプ後の実際の変化量が格納されること
+    RUN_TEST(test_delta_reflects_clamped_cmd_damage);
+    RUN_TEST(test_delta_reflects_upper_clamped_cmd_damage);
+    RUN_TEST(test_delta_reflects_clamped_life);
+    RUN_TEST(test_delta_zero_when_life_already_zero);
+    RUN_TEST(test_delta_matches_request_without_clamp);
 
     return UNITY_END();
 }

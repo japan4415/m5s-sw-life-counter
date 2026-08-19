@@ -61,11 +61,16 @@ LifeChange applyLifeChange(MatchState& state, uint8_t playerIndex,
 
     ps.life = static_cast<uint32_t>(candidate);
 
+    // クランプ後の実際の変化量を delta に格納する。
+    // History 画面で表示するための値であり、Undo には使わない。
+    const int16_t appliedDelta = static_cast<int16_t>(
+        static_cast<int32_t>(ps.life) - static_cast<int32_t>(lifeBefore));
+
     LifeChange change{
         .sequence     = state.nextSequence,
         .playerIndex  = playerIndex,
         .sourceIndex  = kSourceNone,
-        .delta        = delta,
+        .delta        = appliedDelta,
         .lifeBefore   = lifeBefore,
         .lifeAfter    = ps.life,
         .cmdDmgBefore = 0,
@@ -130,7 +135,7 @@ LifeChange applyCommanderDamage(MatchState& state, uint8_t playerIndex,
         .sequence     = state.nextSequence,
         .playerIndex  = playerIndex,
         .sourceIndex  = sourceIndex,
-        .delta        = delta,
+        .delta        = actualDmgDelta,
         .lifeBefore   = lifeBefore,
         .lifeAfter    = ps.life,
         .cmdDmgBefore = cmdDmgBefore,

@@ -70,10 +70,9 @@ public:
 private:
     M5Canvas canvas_{&M5.Display};       // 全画面バッファ（PSRAM 上に確保）
     M5Canvas sectorCanvas_{&M5.Display}; // 扇形描画用テンプキャンバス
-    bool canvasReady_ = false;
+    bool canvasReady_ = false;           // 全画面 Canvas の確保に成功したか
+    bool sectorReady_ = false;           // 扇形 Canvas の確保に成功したか
 
-    // drawHoldProgress(0) で元のリング表示を復元するために追跡する。
-    uint16_t ringColors_[4] = {0, 0, 0, 0};
     uint8_t lastHoldPercent_ = 0;
 
     /// 扇形キャンバスにプレイヤーのライフビューを描画する（転送はしない）。

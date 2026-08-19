@@ -55,9 +55,11 @@ void EdhAppController::begin() {
     // NVS から感度設定を復元する
     {
         const uint8_t sensIdx = storage_.loadedSensitivity();
-        // EdhScreenState には感度設定がないため、GestureDetector に直接設定する
+        screenState_.setSensitivityIndex(sensIdx);
         gesture_.setDegreesPerLife(
             config::degreesPerLifeFromPreset(sensIdx));
+        // setSensitivityIndex が dirty フラグを立てるため消費する。
+        screenState_.consumeDirty();
     }
 
     // NVS に有効な試合状態があり、かつ試合が進行中の場合は復元する
@@ -182,8 +184,12 @@ void EdhAppController::update(uint32_t nowMs) {
             }
             // --- 押している間で座標が変化 ---
             else if (touching && prevTouching_) {
-                if (!innerTouchStarted_ &&
-                    (x != prevTouchX_ || y != prevTouchY_)) {
+                if (innerTouchStarted_) {
+                    // 内側タッチ中: 最新座標を追跡する（タップ判定用）。
+                    // GestureDetector には渡さない。
+                    prevTouchX_ = x;
+                    prevTouchY_ = y;
+                } else if (x != prevTouchX_ || y != prevTouchY_) {
                     gesture_.onTouchMove(x, y, nowMs);
                     prevTouchX_ = x;
                     prevTouchY_ = y;
@@ -192,7 +198,7 @@ void EdhAppController::update(uint32_t nowMs) {
             // --- 立ち下がり検出（離した瞬間）---
             else if (!touching && prevTouching_) {
                 if (innerTouchStarted_) {
-                    // 内側タップの判定
+                    // 内側タップの判定。最新座標 (prevTouchX_/Y_) を渡す。
                     handleInnerTap(prevTouchX_, prevTouchY_, nowMs);
                     innerTouchStarted_ = false;
                 } else {
@@ -381,12 +387,12 @@ void EdhAppController::update(uint32_t nowMs) {
 
 void EdhAppController::handleButtonEvent(input::ButtonEvent event,
                                           uint32_t nowMs) {
-    const auto currentScreen = screenState_.screen();
+    const auto prevScreen = screenState_.screen();
 
     // ================================================================
     // Active 画面
     // ================================================================
-    if (currentScreen == edh::app::Screen::Active) {
+    if (prevScreen == edh::app::Screen::Active) {
         switch (event) {
         case input::ButtonEvent::UndoRequested: {
             const bool undone = edh::undoLast(state_);
@@ -425,7 +431,7 @@ void EdhAppController::handleButtonEvent(input::ButtonEvent event,
     // ================================================================
     // Setup 画面
     // ================================================================
-    else if (currentScreen == edh::app::Screen::Setup) {
+    else if (prevScreen == edh::app::Screen::Setup) {
         switch (event) {
         case input::ButtonEvent::UndoRequested: {
             // A 短押し: ライフプリセット切替（20/40 トグル）
@@ -446,7 +452,7 @@ void EdhAppController::handleButtonEvent(input::ButtonEvent event,
     // ================================================================
     // Menu 画面
     // ================================================================
-    else if (currentScreen == edh::app::Screen::Menu) {
+    else if (prevScreen == edh::app::Screen::Menu) {
         switch (event) {
         case input::ButtonEvent::UndoRequested: {
             // A 短押し: 次の項目へ
@@ -489,7 +495,7 @@ void EdhAppController::handleButtonEvent(input::ButtonEvent event,
         }
         case input::ButtonEvent::UndoRequested: {
             // A 短押し: Sensitivity では値を変更
-            if (currentScreen == edh::app::Screen::Sensitivity) {
+            if (prevScreen == edh::app::Screen::Sensitivity) {
                 const auto action = screenState_.onNext();
                 executeScreenAction(action);
             }
@@ -504,6 +510,19 @@ void EdhAppController::handleButtonEvent(input::ButtonEvent event,
         default:
             break;
         }
+    }
+
+    // ================================================================
+    // 画面遷移後の後処理
+    // ================================================================
+
+    // Sensitivity 画面から離脱したとき、感度を GestureDetector に反映し NVS に保存する。
+    // FaB 版 app_controller.cpp と同じ流儀。
+    if (prevScreen == edh::app::Screen::Sensitivity &&
+        screenState_.screen() != edh::app::Screen::Sensitivity) {
+        const uint8_t idx = screenState_.sensitivityIndex();
+        gesture_.setDegreesPerLife(config::degreesPerLifeFromPreset(idx));
+        storage_.saveSensitivity(idx);
     }
 }
 
