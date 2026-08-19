@@ -89,7 +89,10 @@ function showStep(n: number) {
     item.classList.toggle("active", s === n);
     item.classList.toggle("done", s < n);
   });
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  window.scrollTo({
+    top: 0,
+    behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+  });
 }
 
 // ---- ステップ 1: リリース選択 ----
