@@ -3,7 +3,7 @@
 M5Stack StopWatch Dev Kit (ESP32-S3) 上で動作する、Flesh and Blood (FaB) TCG 向け 1 対 1 ライフカウンター。
 円形 AMOLED ディスプレイの外周をスライドしてライフを増減する操作体系を採用し、無線通信を使わない Tournament Mode を標準とする。
 
-同一ハードウェアでゲーム別の複数ファームウェアバリアントを提供する構想がある。現行の実装は **for FaB** バリアントである。MTG 統率者戦（EDH）向けの **for MTG EDH** バリアントは[仕様策定中](docs/15-edh-firmware-spec.md)（未実装）。
+同一ハードウェアでゲーム別の複数ファームウェアバリアントを提供する。現行リリース済みの実装は **for FaB** バリアントである。MTG 統率者戦（EDH）向けの **for MTG EDH** バリアントは[実装完了](docs/15-edh-firmware-spec.md)（実機検証待ち・未リリース）。
 
 ## ステータス
 
@@ -35,7 +35,11 @@ ls /dev/cu.usbmodem*
 2. ファームウェアをビルドして書き込み、シリアルモニタを起動する:
 
 ```bash
+# for FaB（既定）
 pio run -t upload -t monitor
+
+# for MTG EDH（実機検証待ち・未リリース）
+pio run -e m5stack-stopwatch-edh -t upload -t monitor
 ```
 
 > **注意**: 書き込み完了後、デバイスが自動起動しない場合がある（`Hard resetting via RTS pin` だけでは起動しないことがある）。その場合は電源ボタンを短押ししてリセットすること。電源を切るときは電源ボタンを**素早く 2 回押し**する（長押しはダウンロードモードに入るため使わない）。
@@ -66,7 +70,7 @@ pio run -t upload --upload-port /dev/cu.usbmodem<実際のポート番号>
 | [docs/11-testing.md](docs/11-testing.md) | テスト設計 |
 | [docs/12-roadmap.md](docs/12-roadmap.md) | 実装ロードマップ |
 | [docs/13-decisions.md](docs/13-decisions.md) | 技術選定記録と未解決事項 |
-| [docs/15-edh-firmware-spec.md](docs/15-edh-firmware-spec.md) | MTG EDH（統率者戦）ファームウェア仕様（仕様策定中） |
+| [docs/15-edh-firmware-spec.md](docs/15-edh-firmware-spec.md) | MTG EDH（統率者戦）ファームウェア仕様（実装完了・実機検証待ち） |
 
 **読み進め方**:
 
