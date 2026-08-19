@@ -66,12 +66,22 @@ jobs:
           cp .pio/build/m5stack-stopwatch/partitions.bin release-assets/
           cp .pio/build/m5stack-stopwatch/firmware.bin release-assets/
 
+          # boot_app0.bin: OTA データパーティション (0xe000) の初期化バイナリ。
+          # フルフラッシュ（全消去）後にブートローダーが起動スロットを決定するために必須。
+          # PlatformIO ビルド出力には含まれないため、Arduino ESP32 フレームワークから取得する。
+          BOOT_APP0="$HOME/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin"
+          if [ ! -f "$BOOT_APP0" ]; then
+            echo "::error::boot_app0.bin not found at $BOOT_APP0"
+            exit 1
+          fi
+          cp "$BOOT_APP0" release-assets/
+
       # 形式: "<hash>  <filename>"（スペース2個区切り）。sha256sum は -b フラグなしで使用
       # （ubuntu-latest の GNU coreutils はデフォルトでこの形式・バイナリ自動判定）
       - name: Generate SHA-256 checksums
         run: |
           cd release-assets
-          sha256sum bootloader.bin partitions.bin firmware.bin > sha256sums.txt
+          sha256sum bootloader.bin partitions.bin boot_app0.bin firmware.bin > sha256sums.txt
 
       # 冪等性: 同一タグで再実行した場合、既存の Release を編集（アセット追加）し、
       # 同名アセット（bootloader.bin 等）は削除してから再アップロードされるため重複しない
@@ -82,6 +92,7 @@ jobs:
           files: |
             release-assets/bootloader.bin
             release-assets/partitions.bin
+            release-assets/boot_app0.bin
             release-assets/firmware.bin
             release-assets/sha256sums.txt
           generate_release_notes: true
