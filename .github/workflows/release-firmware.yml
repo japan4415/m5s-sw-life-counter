@@ -30,7 +30,7 @@ jobs:
     steps:
       # タグ push トリガーではデフォルトでタグが指すコミット（タグ時点のソース）が取得される
       - name: Checkout source
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v7
