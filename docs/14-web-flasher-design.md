@@ -305,6 +305,8 @@ flowchart LR
     B -.Workers Builds 接続後.-> D["push で自動デプロイ"]
 ```
 
+- **注意（dev サーバー）**: `yarn dev`（Vite dev サーバー）では Cloudflare Worker が動作しないため、`/api/releases` 等の API エンドポイントは HTML を返す。install ページのリリース一覧を確認するには `wrangler dev` を使用すること
+
 1. **初回（手動）**: `wrangler login` → `web/` で `npm run build` → `wrangler deploy`
 2. **自動化（Workers Builds）**: Cloudflare Dashboard → Worker → Settings → Builds → Connect（GitHub App）でリポジトリ/ブランチを接続する。設定値:
    - ビルドコマンド: `npm run build`（任意）
@@ -399,6 +401,50 @@ flowchart LR
 | V-10 | ダウンロードモード中の電源ボタン短押しの実挙動（通常ブートに復帰するか / 電源 OFF になるか） | ウィザードの中断・再開案内の文言（minor 対応で追記した注意書き）を確定する |
 | V-11 | `/api/firmware/:tag/:file` プロキシの動作（Cache API ヒット/ミス・Content-Type・バイナリ整合性） | リリース選択機能の要。実機書き込み前にブラウザ単体で検証する |
 | V-12 | `/api/releases` のキャッシュ・フェイルオープン動作（GitHub API 障害時の表示） | エラーフロー「リリース一覧が取得できない」の実装根拠 |
+
+---
+
+## 12. ファームウェアバリアント対応
+
+### バリアント別 URL 構成
+
+Web サイトは 2 つのファームウェアバリアント（for FaB / for MTG EDH）に対応する。
+
+| パス | 内容 |
+|------|------|
+| `/` | トップページ（アプリ紹介 + バリアント選択） |
+| `/fab/install` | FaB ファームウェアの書き込みウィザード |
+| `/fab/guide` | FaB 使い方ガイド |
+| `/fab/features` | FaB 機能一覧 |
+| `/edh/install` | EDH ファームウェアの書き込みウィザード |
+| `/edh/guide` | EDH 使い方ガイド |
+| `/edh/features` | EDH 機能一覧 |
+| `/install` | `/fab/install` へリダイレクト（旧 URL 互換） |
+| `/guide` | `/fab/guide` へリダイレクト（旧 URL 互換） |
+| `/features` | `/fab/features` へリダイレクト（旧 URL 互換） |
+
+旧 URL（`/install`, `/guide`, `/features`）は `<meta http-equiv="refresh">` + JavaScript リダイレクト + 手動リンクで `/fab/*` へ転送する。
+
+### リリース成果物の命名規約
+
+| バリアント | ファームウェアファイル名 | 備考 |
+|-----------|----------------------|------|
+| FaB | `firmware.bin` | 現行どおり。既存リリースとの互換を維持 |
+| EDH | `firmware-edh.bin` | 新規。同一リリースに追加で添付 |
+
+`bootloader.bin` / `partitions.bin` / `boot_app0.bin` / `sha256sums.txt` は両バリアント共通である。
+
+### EDH 未リリース時の挙動
+
+EDH ファームウェアは仕様策定段階であり、現時点でリリース物が存在しない。
+
+- `/edh/install` では、リリース一覧から `firmware-edh.bin` をアセットに含むリリースのみをフィルタ表示する
+- フィルタ後のリリースが 0 件の場合、「EDH ファームウェアはまだ公開されていません」という案内を表示する（エラーではなく情報表示）
+- リリースが公開されれば、フィルタにより自動的に通常のウィザードが動作する
+
+### バリアント判定
+
+バリアントは URL パス（`/fab/` or `/edh/`）から決定する。クエリパラメータや localStorage には依存しない。`main.ts` 内の `FIRMWARE_FILES_FULL` / `FIRMWARE_FILES_UPDATE` のファームウェアファイル名をバリアントに応じて切り替える。
 
 ---
 

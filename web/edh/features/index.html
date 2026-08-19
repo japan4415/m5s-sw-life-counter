@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="M5Stack StopWatch ライフカウンター for MTG EDH の機能一覧" />
+    <title>機能一覧 (EDH) - M5Stack StopWatch ライフカウンター</title>
+  </head>
+  <body>
+    <nav id="global-nav"></nav>
+    <div id="app">
+      <header class="page-header">
+        <h1>機能一覧 (EDH)</h1>
+        <p class="app-subtitle">MTG 統率者戦向けライフカウンターのすべての機能を詳しく解説</p>
+      </header>
+
+      <main class="content-page">
+        <div class="draft-banner">
+          <strong>注意:</strong> EDH ファームウェアは仕様策定中であり、まだリリースされていません。以下の内容は設計仕様に基づくものであり、実装時に変更される可能性があります。
+        </div>
+
+        <!-- 画面レイアウト -->
+        <section class="content-section">
+          <h2>画面レイアウト</h2>
+          <div class="feature-card">
+            <h3>4 プレイヤー 4 分割画面</h3>
+            <p>
+              円形画面を対角線（X 字）で 4 つの 90 度扇形に分割し、上（P1）・右（P2）・下（P3）・左（P4）の 4 プレイヤーに割り当てます。
+              各扇形のテキストはそのプレイヤーの着席方向へ回転して描画され、自分の数値を正位置で読めます。
+            </p>
+          </div>
+          <div class="feature-card">
+            <h3>プレイヤー識別</h3>
+            <p>位置とテーマカラー 4 色でプレイヤーを識別します。</p>
+          </div>
+        </section>
+
+        <!-- ライフ管理 -->
+        <section class="content-section">
+          <h2>ライフ管理</h2>
+          <div class="feature-card">
+            <h3>初期ライフ 40</h3>
+            <p>
+              統率者戦のルール（MTG CR 903.7）に基づき、初期ライフは <strong>40</strong> です。
+              メニューの Set Life で 4 人一括で変更することも可能です。
+            </p>
+          </div>
+          <div class="feature-card">
+            <h3>外周スライド操作</h3>
+            <p>
+              円形画面の外周をなぞるだけでライフを増減できます。
+              <strong>スライド開始位置の扇形のプレイヤー</strong>のライフが変動します。
+            </p>
+            <ul>
+              <li><strong>時計回り</strong> = ライフ増加</li>
+              <li><strong>反時計回り</strong> = ライフ減少</li>
+              <li>感度設定で一周あたり 5 / 10 / 20 ライフ分に変更可能（既定 10）</li>
+              <li>ライフ 0 が下限</li>
+              <li>スライド中は差分をプレビュー表示し、指を離して確定</li>
+              <li><strong>中央方向への引き込み</strong>で操作をキャンセル</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- 統率者ダメージ -->
+        <section class="content-section">
+          <h2>統率者ダメージ</h2>
+          <div class="feature-card">
+            <h3>統率者ダメージビュー</h3>
+            <p>
+              自分の扇形の内側をタップすると、統率者ダメージビューに切り替わります。
+              3 人の対戦相手からの累計統率者ダメージが一覧表示されます。
+            </p>
+            <ul>
+              <li>被弾元は相手の<strong>位置</strong>と<strong>テーマカラー</strong>で表示</li>
+              <li>選択中の被弾元はハイライト表示</li>
+              <li>21 以上の被弾元は<strong>警告色</strong>で表示</li>
+              <li>同時に開けるのは <strong>1 プレイヤーのみ</strong></li>
+            </ul>
+          </div>
+          <div class="feature-card">
+            <h3>統率者ダメージの増減</h3>
+            <p>
+              統率者ダメージビューで被弾元（相手の扇形）をタップして選択した後、
+              自分の扇形から外周スライドで統率者ダメージを増減します。
+            </p>
+            <ul>
+              <li>被弾元未選択時はスライドしても統率者ダメージは変化しません</li>
+              <li>統率者ダメージビュー中でも、<strong>他プレイヤーの扇形からのスライドは通常のライフ操作</strong>として扱われます</li>
+            </ul>
+          </div>
+          <div class="feature-card">
+            <h3>ライフ連動</h3>
+            <p>
+              統率者ダメージとライフは<strong>常時連動</strong>します。統率者ダメージ +n でライフ -n、統率者ダメージ -n でライフ +n です。
+              Undo も一体で行われ、二重入力のミスを防止します。
+            </p>
+          </div>
+          <div class="feature-card">
+            <h3>21 点ルール</h3>
+            <p>
+              同一の統率者から合計 21 点以上の戦闘ダメージを受けたプレイヤーは敗北します（MTG CR 903.10.1）。
+              21 到達時に警告表示を行います。
+            </p>
+          </div>
+        </section>
+
+        <!-- 敗北表示 -->
+        <section class="content-section">
+          <h2>敗北表示</h2>
+          <div class="feature-card">
+            <h3>自動敗北表示</h3>
+            <p>以下のいずれかの条件を満たした扇形は敗北表示（グレーアウト等）になります。</p>
+            <ul>
+              <li>ライフが <strong>0 以下</strong>（CR 704.5a）</li>
+              <li>いずれかの被弾元からの統率者ダメージが <strong>21 以上</strong>（CR 903.10.1）</li>
+            </ul>
+            <p>敗北表示はあくまで目安であり、Undo で復帰可能です。ルール裁定はプレイヤーが行います。</p>
+          </div>
+        </section>
+
+        <!-- 履歴と Undo -->
+        <section class="content-section">
+          <h2>履歴と Undo</h2>
+          <div class="feature-card">
+            <h3>操作履歴</h3>
+            <p>
+              1 スライド全体を 1 つの履歴として記録します。最大 <strong>64 件</strong>の履歴を保持し、
+              ゲームメニューの History から確認できます。統率者ダメージ操作も含め、対象・被弾元・変化量を 1 行で確認できます。
+            </p>
+          </div>
+          <div class="feature-card">
+            <h3>Undo</h3>
+            <p>
+              <strong>KEYA（左・黄ボタン）短押し</strong>で直前の操作を 1 件取り消せます。
+              統率者ダメージ操作の Undo では、統率者ダメージとライフの両方が一体で巻き戻ります。
+            </p>
+          </div>
+        </section>
+
+        <!-- 物理ボタン操作 -->
+        <section class="content-section">
+          <h2>物理ボタン操作</h2>
+          <div class="button-table">
+            <div class="button-row">
+              <span class="button-label">KEYA（左・黄）短押し</span>
+              <span>Undo（直前の操作を取り消し）</span>
+            </div>
+            <div class="button-row">
+              <span class="button-label">KEYB（右・青）短押し</span>
+              <span>タッチロック / 解除</span>
+            </div>
+            <div class="button-row">
+              <span class="button-label">KEYA + KEYB 長押し（1 秒）</span>
+              <span>ゲームメニューを開く</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- ゲームメニュー -->
+        <section class="content-section">
+          <h2>ゲームメニュー</h2>
+          <p>KEYA + KEYB の同時長押し（1 秒）で開きます。</p>
+          <div class="menu-list">
+            <div class="menu-item">
+              <strong>Resume</strong>
+              <span>ゲームに戻る</span>
+            </div>
+            <div class="menu-item">
+              <strong>History</strong>
+              <span>ライフ・統率者ダメージの変動履歴を確認</span>
+            </div>
+            <div class="menu-item">
+              <strong>Set Life</strong>
+              <span>4 人一括の初期ライフを変更（既定 40）</span>
+            </div>
+            <div class="menu-item">
+              <strong>Sensitivity</strong>
+              <span>外周スライドの感度（一周あたりの変動量）を 5 / 10 / 20 から選択</span>
+            </div>
+            <div class="menu-item">
+              <strong>Rematch</strong>
+              <span>同じ開始ライフでやり直し（長押しで確認）</span>
+            </div>
+            <div class="menu-item">
+              <strong>About</strong>
+              <span>ファームウェアバージョンを表示</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- フィードバック・電源 -->
+        <section class="content-section">
+          <h2>フィードバックと電源管理</h2>
+          <div class="feature-card">
+            <h3>電源操作と自動復元</h3>
+            <p>
+              電源ボタンを<strong>短押し</strong>で電源 ON、<strong>素早く 2 回押し</strong>で電源 OFF。
+              電源を切っても試合状態（ライフ・統率者ダメージ・履歴）は自動保存されるため、次に電源を入れると前回の続きからそのまま再開できます。
+            </p>
+          </div>
+          <div class="feature-card">
+            <h3>振動フィードバック</h3>
+            <p>操作時に振動でフィードバックを返します。音は鳴りません（大会会場でも安心）。</p>
+          </div>
+          <div class="feature-card">
+            <h3>バッテリー残量表示</h3>
+            <p>メニュー画面でバッテリー残量を確認できます。20% 以下で警告を表示します。</p>
+          </div>
+        </section>
+
+        <!-- スコープ外 -->
+        <section class="content-section">
+          <h2>対象外の機能</h2>
+          <div class="feature-card future">
+            <p>以下の機能は現在のスコープ外です。将来検討となります。</p>
+            <ul>
+              <li><strong>毒カウンター / エネルギー / 経験カウンター</strong> &mdash; 追加カウンター種別の拡張として将来検討</li>
+              <li><strong>統治者 / イニシアチブ</strong> &mdash; 状態トークンの管理は範囲外</li>
+              <li><strong>ターン・時間管理</strong> &mdash; ライフカウンターの本質的機能ではない</li>
+              <li><strong>共闘（Partner）</strong> &mdash; 被弾元をプレイヤー単位で記録するため、同一プレイヤーの 2 体の統率者を区別できない</li>
+              <li><strong>4 人以外の人数</strong> &mdash; 画面レイアウトが 4 分割専用設計のため</li>
+            </ul>
+          </div>
+        </section>
+      </main>
+
+      <footer class="app-footer">
+        <p class="muted small">
+          M5Stack StopWatch ライフカウンター &mdash;
+          <a href="https://github.com/japan4415/m5s-sw-life-counter" class="muted">GitHub</a>
+        </p>
+      </footer>
+    </div>
+    <script type="module" src="/src/page.ts"></script>
+  </body>
+</html>

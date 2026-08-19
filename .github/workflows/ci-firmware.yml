@@ -57,8 +57,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      - name: Build firmware
+      - name: Build firmware (FaB)
         run: pio run -e m5stack-stopwatch
+
+      - name: Build firmware (EDH)
+        run: pio run -e m5stack-stopwatch-edh
 
       - name: Run native tests
         run: pio test -e native
