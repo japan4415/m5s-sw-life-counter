@@ -1,8 +1,8 @@
 # プロジェクト概要とスコープ
 
-M5Stack StopWatch Dev Kit を使った Flesh and Blood (FaB) 専用ライフカウンターの設計概要である。
+M5Stack StopWatch Dev Kit を使った Flesh and Blood (FaB) 専用ライフカウンター（**for FaB** ファームウェア）の設計概要である。
 
-**関連ドキュメント**: [./01-hardware.md](./01-hardware.md) | [./04-requirements.md](./04-requirements.md) | [./05-ui-ux.md](./05-ui-ux.md) | [./12-roadmap.md](./12-roadmap.md)
+**関連ドキュメント**: [./01-hardware.md](./01-hardware.md) | [./04-requirements.md](./04-requirements.md) | [./05-ui-ux.md](./05-ui-ux.md) | [./12-roadmap.md](./12-roadmap.md) | MTG EDH 向け: [./15-edh-firmware-spec.md](./15-edh-firmware-spec.md)
 
 ## 背景と目的
 
