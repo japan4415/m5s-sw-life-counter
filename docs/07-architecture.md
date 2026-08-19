@@ -45,7 +45,7 @@ FaB ライフカウンターのソフトウェア構成、レイヤ設計、メ�
 | MatchModel / LifeService | ドメインロジック（ライフ変更、Undo、履歴管理）。ハードウェア非依存 |
 | InputController / GestureDetector | タッチ入力の受信、極座標変換、外周スライドジェスチャーの検出、サンプル間経過時間に基づく角速度異常値判定。ジェスチャー検出ロジック自体はハードウェア非依存 |
 | ButtonInput | 物理ボタン A/B の押下状態から短押し・長押し・A+B 同時押しを判定する状態機械。ハードウェア非依存（押下状態と時刻を引数で受け取る） |
-| ScreenState | 画面遷移（Setup / Active / Menu / History / About）とメニュー選択の状態機械。ハードウェア非依存 |
+| ScreenState | 画面遷移（Setup / Active / Menu / History / About / Sensitivity）とメニュー選択の状態機械。ハードウェア非依存 |
 | Renderer | M5GFX を使った画面描画。PSRAM 上の Canvas への描画と転送 |
 | Storage | NVS への永続化（実装済み）。名前空間 `lifectr`、キー `s00`〜`s15` の 16 スロットローテーション。操作確定のたびに PersistentRecord（magic/schemaVersion/payloadSize/sequence/state/crc32）を書き込み、起動時に sequence 最大の有効レコードから自動復元する |
 | Haptics | 振動モーターの制御。パターン再生とタイミング管理 |
@@ -266,7 +266,7 @@ LVGL は使用せず、M5GFX で直接描画する。
 
 ### アプリ状態（画面状態）
 
-実装の `Screen` 列挙に対応する 5 つの画面状態:
+実装の `Screen` 列挙に対応する 6 つの画面状態:
 
 | 状態 | 意味 |
 |---|---|
@@ -275,6 +275,7 @@ LVGL は使用せず、M5GFX で直接描画する。
 | `MENU` | ゲームメニュー表示中。ボタンのみで操作する |
 | `HISTORY` | 直近のライフ変更履歴を一覧表示する |
 | `ABOUT` | ファームウェア情報を表示する |
+| `SENSITIVITY` | 感度設定画面。一周あたりのライフ変動量を 5 / 10 / 20 から選択する |
 
 **ロック（LOCKED）は画面状態ではなく `MatchState::touchLocked` フラグ**で管理する。ロック中もメニューやボタン操作は通常どおり動作するため、画面遷移として扱う必要がない。
 
