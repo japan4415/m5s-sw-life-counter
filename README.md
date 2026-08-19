@@ -64,6 +64,7 @@ pio run -t upload --upload-port /dev/cu.usbmodem<実際のポート番号>
 | [docs/11-testing.md](docs/11-testing.md) | テスト設計 |
 | [docs/12-roadmap.md](docs/12-roadmap.md) | 実装ロードマップ |
 | [docs/13-decisions.md](docs/13-decisions.md) | 技術選定記録と未解決事項 |
+| [docs/14-web-flasher-design.md](docs/14-web-flasher-design.md) | Web Flasher 設計（ブラウザ経由のファームウェア書き込み） |
 
 **読み進め方**:
 
