@@ -1,6 +1,6 @@
 # 要件定義
 
-M5Stack StopWatch を用いた Flesh and Blood (FaB) 対応ライフカウンターの要件を定義する。
+M5Stack StopWatch を用いた Flesh and Blood (FaB) 対応ライフカウンター（**for FaB** ファームウェア）の要件を定義する。
 
 ## 関連ドキュメント
 

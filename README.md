@@ -3,6 +3,8 @@
 M5Stack StopWatch Dev Kit (ESP32-S3) 上で動作する、Flesh and Blood (FaB) TCG 向け 1 対 1 ライフカウンター。
 円形 AMOLED ディスプレイの外周をスライドしてライフを増減する操作体系を採用し、無線通信を使わない Tournament Mode を標準とする。
 
+同一ハードウェアでゲーム別の複数ファームウェアバリアントを提供する構想がある。現行の実装は **for FaB** バリアントである。MTG 統率者戦（EDH）向けの **for MTG EDH** バリアントは[仕様策定中](docs/15-edh-firmware-spec.md)（未実装）。
+
 ## ステータス
 
 **ファームウェア v1.0.0 リリース済み** -- [Web Flasher](https://m5s-sw-life-counter.discord.jp/install) からブラウザ経由でインストールできる。
@@ -64,6 +66,7 @@ pio run -t upload --upload-port /dev/cu.usbmodem<実際のポート番号>
 | [docs/11-testing.md](docs/11-testing.md) | テスト設計 |
 | [docs/12-roadmap.md](docs/12-roadmap.md) | 実装ロードマップ |
 | [docs/13-decisions.md](docs/13-decisions.md) | 技術選定記録と未解決事項 |
+| [docs/15-edh-firmware-spec.md](docs/15-edh-firmware-spec.md) | MTG EDH（統率者戦）ファームウェア仕様（仕様策定中） |
 
 **読み進め方**:
 
