@@ -20,7 +20,6 @@
 #include "domain/edh_life_service.hpp"
 #include "app/edh_screen_state.hpp"
 #include "input/edh_touch_zone.hpp"
-#include "ui/edh_theme.hpp"
 
 namespace counter::app {
 
@@ -596,11 +595,11 @@ bool EdhAppController::handleInnerTap(int16_t x, int16_t y, uint32_t nowMs) {
     const int32_t moveSq = static_cast<int32_t>(dx) * dx +
                            static_cast<int32_t>(dy) * dy;
     const int32_t maxMoveSq =
-        static_cast<int32_t>(ui::edh_theme::kTapMaxMovePx) *
-        ui::edh_theme::kTapMaxMovePx;
+        static_cast<int32_t>(edh::kTapMaxMovePx) *
+        edh::kTapMaxMovePx;
     const uint32_t elapsed = nowMs - tapStartMs_;
 
-    if (moveSq > maxMoveSq || elapsed > ui::edh_theme::kTapMaxDurationMs) {
+    if (moveSq > maxMoveSq || elapsed > edh::kTapMaxDurationMs) {
         return false;  // タップではない（ドラッグ等）
     }
 

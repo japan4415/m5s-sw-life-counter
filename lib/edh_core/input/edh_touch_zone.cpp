@@ -6,23 +6,6 @@
 
 namespace counter::edh {
 
-// 内側タップ判定に必要な定数（仕様書の未確定事項）。
-// 内側タップ = 短時間で touch start -> end、移動量が小さいこと。
-// これらの値は実機テストで調整する前提の設計値。
-// タップ判定自体はアプリ層（GestureDetector 相当）で行うが、
-// しきい値はここで定義しておく。
-namespace {
-
-// タップと判定する許容移動量 (px)。
-// 指のブレを吸収するために余裕を持たせた値。
-constexpr float kTapMaxMovePx = 15.0f;
-
-// タップと判定する許容時間 (ms)。
-// 300ms 以内の touch start -> end をタップとみなす。
-constexpr uint32_t kTapMaxDurationMs = 300;
-
-}  // namespace
-
 uint8_t selectSector(int16_t x, int16_t y) {
     const float dx = static_cast<float>(x) - counter::config::kCenterX;
     const float dy = static_cast<float>(y) - counter::config::kCenterY;

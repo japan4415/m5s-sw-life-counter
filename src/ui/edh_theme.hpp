@@ -243,12 +243,4 @@ constexpr uint16_t kSensitivityLabelColor = 0x8410;
 // P1(上)=180°→rot 2, P2(右)=270°→rot 3, P3(下)=0°→rot 0, P4(左)=90°→rot 1
 constexpr uint8_t kPlayerRotation[4] = {2, 3, 0, 1};
 
-// ============================================================
-// 内側タップ判定のしきい値（実機調整前提）
-// ============================================================
-// タップと判定する最大移動量 (px) と最大継続時間 (ms)。
-// 移動量がこれ以下かつ時間がこれ以下でタップと判定する。
-constexpr int16_t kTapMaxMovePx = 20;    // 許容移動量（実機調整前提）
-constexpr uint32_t kTapMaxDurationMs = 300;  // 許容時間（実機調整前提）
-
 }  // namespace counter::ui::edh_theme

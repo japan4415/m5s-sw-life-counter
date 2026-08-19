@@ -18,4 +18,16 @@ bool isInInnerZone(int16_t x, int16_t y);
 /// キャンセル領域か（kCancelRadius 未満）
 bool isInCancelZone(int16_t x, int16_t y);
 
+// ============================================================
+// 内側タップ判定のしきい値（実機調整前提の設計値）
+// ============================================================
+// 内側タップ = 短時間で touch start -> end、移動量が小さいこと。
+// これらの値は実機テストで調整する前提。
+
+/// タップと判定する最大移動量 (px)。指のブレを吸収するために余裕を持たせた値。
+constexpr int16_t kTapMaxMovePx = 20;
+
+/// タップと判定する最大継続時間 (ms)。この時間以内の touch start -> end をタップとみなす。
+constexpr uint32_t kTapMaxDurationMs = 300;
+
 }  // namespace counter::edh
