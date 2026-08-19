@@ -69,6 +69,9 @@ public:
     /// About 画面。ファームウェア情報を表示する。
     void drawAbout();
 
+    /// 感度設定画面。現在の感度プリセットと選択肢を表示する。
+    void drawSensitivity(const app::ScreenState& sc);
+
     /// 長押しの進捗を部分再描画で表示する。percent は 0〜100。
     /// 0 を渡すと消去して元の表示に戻す。
     /// どの画面の上にも重ねられるよう、外周リング内 (r=185..205) に

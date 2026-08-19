@@ -17,6 +17,7 @@
 
 #include <M5Unified.h>
 
+#include "app_config.hpp"
 #include "domain/life_service.hpp"
 
 namespace counter::app {
@@ -78,7 +79,8 @@ const char* screenName(Screen s) {
     case Screen::Active:  return "Active";
     case Screen::Menu:    return "Menu";
     case Screen::History: return "History";
-    case Screen::About:   return "About";
+    case Screen::About:       return "About";
+    case Screen::Sensitivity: return "Sensitivity";
     }
     return "?";
 }
@@ -90,6 +92,19 @@ void AppController::begin() {
     renderer_.begin();
     haptics_.begin();
     storage_.begin();
+
+    // NVS から感度設定を復元する。試合状態とは独立して管理するため、
+    // 試合の有無にかかわらず常に読み出す。
+    {
+        const uint8_t sensIdx = storage_.loadedSensitivity();
+        screenState_.setSensitivityIndex(sensIdx);
+        gesture_.setDegreesPerLife(
+            config::degreesPerLifeFromPreset(sensIdx));
+        // setSensitivityIndex が dirty フラグを立てるため消費する。
+        // この時点ではまだ画面を描画していないので、dirty は後続の
+        // drawSetup/drawAll で処理される。
+        screenState_.consumeDirty();
+    }
 
     // NVS に有効な試合状態があり、かつ試合が進行中 (active) の場合のみ
     // 復元して Active 画面で再開する。active が false の状態は復元せず、
@@ -218,7 +233,7 @@ void AppController::update(uint32_t nowMs) {
             }
         }
     }
-    // Menu / History / About: タッチを GestureDetector に渡さない（誤操作防止）
+    // Menu / History / About / Sensitivity: タッチを GestureDetector に渡さない（誤操作防止）
 
     prevTouching_ = touching;
 
@@ -389,7 +404,7 @@ void AppController::update(uint32_t nowMs) {
     //    | Setup             | なし             | 表示（START）         |
     //    | Menu（確認待ちなし）| 表示（閉じる）   | なし                 |
     //    | Menu（確認待ち）   | 表示（閉じる）   | 表示（確定）          |
-    //    | History / About   | 表示（Menu へ）  | なし                 |
+    //    | History/About/Sens| 表示（Menu へ）  | なし                 |
     //    単独 A 長押しはどの画面でも表示しない（意味のある操作が無い）。
     //
     //    drawHoldProgress() は約 11 ms の部分再描画。5% 刻み (20 段階) で
@@ -552,7 +567,7 @@ void AppController::handleButtonEvent(input::ButtonEvent event,
     }
 
     // ================================================================
-    // Active 以外（Setup / Menu / History / About）:
+    // Active 以外（Setup / Menu / History / About / Sensitivity）:
     // ボタンイベントを ScreenState に委譲する。
     // Undo やロック切替は Active 専用なので、ここでは発動しない。
     // メニュー操作中に誤って試合状態が変わることを防ぐ。
@@ -587,6 +602,15 @@ void AppController::handleButtonEvent(input::ButtonEvent event,
     case input::ButtonEvent::None:
         // 何もしない
         break;
+    }
+
+    // Sensitivity 画面から離脱したとき、感度を GestureDetector に反映し NVS に保存する。
+    // 離脱は B 短押し（onSelect → Menu）または A+B 長押し（onCloseMenu → Menu）で起きる。
+    if (prevScreen == Screen::Sensitivity &&
+        screenState_.screen() != Screen::Sensitivity) {
+        const uint8_t idx = screenState_.sensitivityIndex();
+        gesture_.setDegreesPerLife(config::degreesPerLifeFromPreset(idx));
+        storage_.saveSensitivity(idx);
     }
 
     // SetLife 選択による Setup 遷移を検出する。
@@ -719,6 +743,10 @@ void AppController::drawCurrentScreen(uint32_t /*nowMs*/) {
 
     case Screen::About:
         renderer_.drawAbout();
+        break;
+
+    case Screen::Sensitivity:
+        renderer_.drawSensitivity(screenState_);
         break;
     }
 }

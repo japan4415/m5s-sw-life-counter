@@ -47,6 +47,11 @@ public:
     /// 直前の onTouchDown が開始禁止領域で拒否されたか（警告振動を鳴らす判断に使う）
     bool consumeRejectedStart();
 
+    /// 感度（度/ライフ）を実行時に変更する。
+    /// 値は 360 / (一周あたりのライフ数) で計算する。
+    /// デフォルトは 36.0f（一周 10 ライフ、既存動作と同一）。
+    void setDegreesPerLife(float degreesPerLife);
+
 private:
     GestureState state_       = GestureState::Idle;
     PlayerId     player_      = PlayerId::Top;
@@ -56,6 +61,7 @@ private:
     bool         stepChanged_    = false; // 直前の onTouchMove で段階が変わったか
     bool         rejectedStart_ = false; // 直前の onTouchDown が禁止領域で拒否されたか
     uint32_t     prevMs_        = 0;     // 前回サンプルの時刻（ms）
+    float        degreesPerLife_ = 36.0f; // 感度（度/ライフ）。デフォルトは既存値
 };
 
 }  // namespace counter::input

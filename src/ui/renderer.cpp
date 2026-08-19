@@ -572,9 +572,9 @@ void Renderer::drawMenu(const app::ScreenState& sc,
     // --- メニュー項目の描画 ---
     // 項目名は英語。docs/05-ui-ux.md のメニュー定義に準拠する。
     // MenuItem 列挙と同じ順序で並べる:
-    //   Resume(0), History(1), SetLife(2), Rematch(3), About(4)
+    //   Resume(0), History(1), SetLife(2), SetSensitivity(3), Rematch(4), About(5)
     static constexpr const char* kItemNames[] = {
-        "Resume", "History", "Set Life", "Rematch", "About"
+        "Resume", "History", "Set Life", "Sensitivity", "Rematch", "About"
     };
     static_assert(
         sizeof(kItemNames) / sizeof(kItemNames[0]) == app::kMenuItemCount,
@@ -912,6 +912,86 @@ void Renderer::drawAbout() {
     target->setTextSize(theme::kAboutFooterFontSize);
     target->setTextColor(theme::kHintTextColor, theme::kBgColor);
     target->drawString("B: Back", cx, theme::kAboutFooterY);
+
+    if (canvasReady_) {
+        canvas_.pushSprite(0, 0);
+    }
+}
+
+// ============================================================
+// drawSensitivity — 感度設定画面（全画面転送）
+// ============================================================
+
+void Renderer::drawSensitivity(const app::ScreenState& sc) {
+    // 毎ループ呼ばれない前提。画面遷移時やプリセット変更時に呼ぶ。
+
+    LovyanGFX* target = canvasReady_
+        ? static_cast<LovyanGFX*>(&canvas_)
+        : static_cast<LovyanGFX*>(&M5.Display);
+
+    target->fillScreen(theme::kBgColor);
+
+    // 感度設定画面はリングを描画しないため、弧領域は背景色になる
+    ringTopColor_ = theme::kBgColor;
+    ringBottomColor_ = theme::kBgColor;
+
+    // 全画面転送で進捗弧が消えるため、次回 drawHoldProgress() は
+    // トラックから描き直す必要がある
+    lastHoldPercent_ = 0;
+
+    auto cx = static_cast<int32_t>(config::kCenterX);
+
+    const uint8_t sensIndex = sc.sensitivityIndex();
+    const uint8_t sensValue = config::kSensitivityPresets[sensIndex];
+
+    target->setTextDatum(middle_center);
+
+    // --- タイトル ---
+    target->setTextSize(theme::kSensitivityTitleFontSize);
+    target->setTextColor(theme::kSensitivityTitleColor, theme::kBgColor);
+    target->drawString("SENSITIVITY", cx, theme::kSensitivityTitleY);
+
+    // --- 現在値（大きな数字）---
+    target->setTextSize(theme::kSensitivityValueFontSize);
+    target->setTextColor(theme::kSensitivityValueColor, theme::kBgColor);
+    char valBuf[8];
+    snprintf(valBuf, sizeof(valBuf), "%u", static_cast<unsigned>(sensValue));
+    target->drawString(valBuf, cx, theme::kSensitivityValueY);
+
+    // --- ラベル ---
+    target->setTextSize(theme::kSensitivityLabelFontSize);
+    target->setTextColor(theme::kSensitivityLabelColor, theme::kBgColor);
+    target->drawString("life / rev", cx, theme::kSensitivityLabelY);
+
+    // --- プリセット一覧（角括弧で選択中を示す。色覚差対応）---
+    // セットアップ画面のプリセット表示と同じパターン。
+    target->setTextSize(theme::kSensitivityPresetFontSize);
+    // 3 プリセット（5, 10, 20）を横並びで表示する。
+    // 選択中のプリセットをシアン + 角括弧、非選択をダークグレー + スペースで表示。
+    for (size_t i = 0; i < config::kSensitivityPresetCount; ++i) {
+        bool isCurrent = (i == sensIndex);
+        char label[8];
+        snprintf(label, sizeof(label), "%s%u%s",
+                 isCurrent ? "[" : " ",
+                 static_cast<unsigned>(config::kSensitivityPresets[i]),
+                 isCurrent ? "]" : " ");
+
+        target->setTextColor(
+            isCurrent ? theme::kSetupPresetActiveColor
+                      : theme::kSetupPresetInactiveColor,
+            theme::kBgColor);
+
+        // 3 項目を中央揃えで横に配置する。
+        // 中心から左に 60px, 中央, 右に 60px の位置に配置する。
+        int32_t offsetX = static_cast<int32_t>(i) * 60
+                        - static_cast<int32_t>(config::kSensitivityPresetCount - 1) * 30;
+        target->drawString(label, cx + offsetX, theme::kSensitivityPresetY);
+    }
+
+    // --- 操作説明 ---
+    target->setTextSize(theme::kSensitivityHintFontSize);
+    target->setTextColor(theme::kHintTextColor, theme::kBgColor);
+    target->drawString("A: Change  B: OK", cx, theme::kSensitivityHintY);
 
     if (canvasReady_) {
         canvas_.pushSprite(0, 0);

@@ -44,6 +44,19 @@ constexpr uint32_t kMinVibrationMs = 20;
 // 実測スイープ角速度 約 233°/s → 1 ライフあたり約 154 ms
 constexpr float kDegreesPerLife = 36.0f;
 
+// 感度プリセット（一周あたりのライフ変動量）
+// 5 ライフ = 72.0 度/ライフ、10 ライフ = 36.0 度/ライフ、20 ライフ = 18.0 度/ライフ
+// デフォルト（インデックス 1 = 10 ライフ）は既存動作 (kDegreesPerLife = 36.0f) と同一
+constexpr uint8_t kSensitivityPresets[] = {5, 10, 20};
+constexpr size_t kSensitivityPresetCount =
+    sizeof(kSensitivityPresets) / sizeof(kSensitivityPresets[0]);
+constexpr size_t kDefaultSensitivityIndex = 1;  // 10 ライフ（既存デフォルト）
+
+// プリセットインデックスから度/ライフ値を計算する
+constexpr float degreesPerLifeFromPreset(size_t index) {
+    return 360.0f / static_cast<float>(kSensitivityPresets[index]);
+}
+
 // ============================================================
 // 未検証の初期値（実機テストで調整する前提）
 // ============================================================
