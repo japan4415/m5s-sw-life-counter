@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="M5Stack StopWatch ライフカウンター for FaB の使い方ガイド" />
+    <title>使い方ガイド (FaB) - M5Stack StopWatch ライフカウンター</title>
+  </head>
+  <body>
+    <nav id="global-nav"></nav>
+    <div id="app">
+      <header class="page-header">
+        <h1>使い方ガイド (FaB)</h1>
+        <p class="app-subtitle">Flesh and Blood 向け - セットアップから対戦中の操作まで</p>
+      </header>
+
+      <main class="content-page">
+        <!-- 1. 用意するもの -->
+        <section class="content-section">
+          <h2>1. 用意するもの</h2>
+          <ul class="checklist">
+            <li><strong>M5Stack StopWatch</strong>（円形ディスプレイ搭載のウェアラブルデバイス）</li>
+            <li><strong>USB-C ケーブル</strong>（データ通信対応のもの。充電専用ケーブルでは書き込みできません）</li>
+            <li><strong>Chrome 89+ または Edge 89+</strong>（Windows / macOS / Linux。Safari・Firefox・Android Chrome は非対応）</li>
+          </ul>
+        </section>
+
+        <!-- 2. ファームウェア書き込み -->
+        <section class="content-section">
+          <h2>2. ファームウェアを書き込む</h2>
+          <p>
+            ブラウザからファームウェアを書き込みます。初回セットアップでも、バージョンアップでも同じ手順です。
+          </p>
+          <div class="guide-cta">
+            <a href="/fab/install" class="btn btn-primary">インストールページへ</a>
+            <span class="muted small">6 ステップのウィザードに沿って進めるだけで完了します。</span>
+          </div>
+        </section>
+
+        <!-- 3. 電源の入れ方・切り方 -->
+        <section class="content-section">
+          <h2 id="power">3. 電源の入れ方・切り方</h2>
+          <div class="operation-card">
+            <ul>
+              <li><strong>電源 ON</strong>: 電源ボタンを<strong>短押し</strong>（1 回）</li>
+              <li><strong>電源 OFF</strong>: 電源ボタンを<strong>素早く 2 回押し</strong></li>
+            </ul>
+            <p>電源を切っても試合状態（ライフ・履歴）は自動保存されます。次に電源を入れると、前回の続きからそのまま再開できます。</p>
+          </div>
+          <div class="warn-box">
+            <strong>注意:</strong> 電源ボタンを長押し（約 2 秒）するとダウンロードモード（緑 LED 点灯）に入ります。電源を切りたいときは長押しではなく、<strong>素早く 2 回押し</strong>してください。
+          </div>
+        </section>
+
+        <!-- 4. 初回起動 -->
+        <section class="content-section">
+          <h2>4. 初回起動と開始ライフ設定</h2>
+          <ol class="guide-steps">
+            <li>書き込み完了後、<strong>電源ボタンを短押し</strong>してデバイスを起動します。</li>
+            <li>初回起動時は開始ライフの選択画面が表示されます。</li>
+            <li>
+              外周スライドで任意の値を設定できます。A ボタン短押しで 20 / 40 のプリセットに素早く切り替えることもできます。
+              Flesh and Blood (FaB) のヒーローカード記載値などに合わせて設定してください。
+            </li>
+            <li>B ボタン長押し（1 秒）で試合を開始します。</li>
+          </ol>
+        </section>
+
+        <!-- 5. 対戦中の操作 -->
+        <section class="content-section">
+          <h2>5. 対戦中の操作</h2>
+
+          <h3>外周スライドでライフを増減</h3>
+          <div class="operation-card">
+            <p>円形画面の縁をなぞってライフを変更します。</p>
+            <ul>
+              <li><strong>時計回り</strong>にスライド → ライフ増加</li>
+              <li><strong>反時計回り</strong>にスライド → ライフ減少</li>
+              <li>36 度のスライドでライフ &plusmn;1（デフォルトでは一周 10 ライフ分。Sensitivity メニューで 5 / 10 / 20 に変更可能）</li>
+              <li>スライド中は差分（<code>-4</code> など）がプレビュー表示されます</li>
+              <li>指を離すと確定。<strong>中央方向への引き込み</strong>でキャンセル</li>
+            </ul>
+          </div>
+
+          <h3>Undo（やり直し）</h3>
+          <div class="operation-card">
+            <p><strong>KEYA（左・黄ボタン）を短押し</strong>で、直前の操作を 1 件取り消せます。最大 64 件分の履歴を遡れます。</p>
+          </div>
+
+          <h3>タッチロック</h3>
+          <div class="operation-card">
+            <p><strong>KEYB（右・青ボタン）を短押し</strong>で、タッチ操作をロック / 解除できます。誤操作を防ぎたいときに便利です。</p>
+          </div>
+        </section>
+
+        <!-- 6. メニュー操作 -->
+        <section class="content-section">
+          <h2>6. ゲームメニュー</h2>
+          <p><strong>KEYA + KEYB を同時に 1 秒長押し</strong>でメニューが開きます。</p>
+          <div class="operation-card">
+            <ul>
+              <li><strong>KEYA（左・黄ボタン）を短押し</strong> → 次の項目へ移動</li>
+              <li><strong>KEYB（右・青ボタン）を短押し</strong> → 選択・決定</li>
+              <li><strong>KEYA + KEYB を同時に 1 秒長押し</strong> → 1 つ前の画面に戻る</li>
+            </ul>
+          </div>
+          <div class="menu-list">
+            <div class="menu-item">
+              <strong>Resume</strong>
+              <span>ゲームに戻る</span>
+            </div>
+            <div class="menu-item">
+              <strong>History</strong>
+              <span>直近 64 件のライフ変動履歴を確認</span>
+            </div>
+            <div class="menu-item">
+              <strong>Set Life</strong>
+              <span>ライフを直接指定して修正</span>
+            </div>
+            <div class="menu-item">
+              <strong>Sensitivity</strong>
+              <span>外周スライドの感度（一周あたりのライフ変動量）を 5 / 10 / 20 から選択</span>
+            </div>
+            <div class="menu-item">
+              <strong>Rematch</strong>
+              <span>同じ開始ライフでやり直し（長押しで確認）</span>
+            </div>
+            <div class="menu-item">
+              <strong>About</strong>
+              <span>ファームウェアバージョンを表示</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 7. トラブルシューティング -->
+        <section class="content-section">
+          <h2>7. 困ったときは</h2>
+          <details class="help-box">
+            <summary>デバイスが起動しない</summary>
+            <ul>
+              <li>電源ボタンを<strong>短押し</strong>してください。長押しするとダウンロードモードに入ってしまいます（<a href="#power">電源の入れ方・切り方</a>を参照）。</li>
+              <li>バッテリーが切れている場合は、USB-C ケーブルで充電してください。</li>
+            </ul>
+          </details>
+          <details class="help-box">
+            <summary>スライド操作が反応しない</summary>
+            <ul>
+              <li>タッチロックが有効になっていないか確認してください（KEYB 短押しで解除）。</li>
+              <li>画面の外周部分（縁の近く）をなぞってください。中央付近は反応しません。</li>
+            </ul>
+          </details>
+          <details class="help-box">
+            <summary>ファームウェア書き込みに失敗する</summary>
+            <ul>
+              <li>データ通信対応の USB-C ケーブルを使っているか確認してください。</li>
+              <li>デバイスがダウンロードモード（緑 LED 点灯）になっているか確認してください。</li>
+              <li>他のタブやアプリがシリアルポートを占有していないか確認してください。</li>
+              <li>詳しくは<a href="/fab/install">インストールページ</a>のヘルプを参照してください。</li>
+            </ul>
+          </details>
+          <details class="help-box">
+            <summary>バッテリーの減りが早い</summary>
+            <ul>
+              <li>使用後は<strong>電源ボタンを素早く 2 回押し</strong>して電源を切ってください。</li>
+              <li>ダウンロードモードのまま放置するとバッテリーを消費し続けます。通常起動に戻してください。</li>
+            </ul>
+          </details>
+        </section>
+      </main>
+
+      <footer class="app-footer">
+        <p class="muted small">
+          M5Stack StopWatch ライフカウンター &mdash;
+          <a href="https://github.com/japan4415/m5s-sw-life-counter" class="muted">GitHub</a>
+        </p>
+      </footer>
+    </div>
+    <script type="module" src="/src/page.ts"></script>
+  </body>
+</html>

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="M5Stack StopWatch で動くカードゲーム向け 2 人対戦ライフカウンター" />
+    <meta name="description" content="M5Stack StopWatch で動くカードゲーム向けライフカウンター" />
     <title>M5Stack StopWatch ライフカウンター</title>
   </head>
   <body>
@@ -19,12 +19,34 @@
         </div>
         <h1 class="hero-title">M5Stack StopWatch<br />ライフカウンター</h1>
         <p class="hero-desc">
-          円形ディスプレイのウェアラブルデバイスで動く、Flesh and Blood (FaB) 等のカードゲーム向け
-          2 人対戦ライフカウンター。外周スライドで直感的にライフを増減できます。
+          円形ディスプレイのウェアラブルデバイスで動く、カードゲーム向けライフカウンター。
+          外周スライドで直感的にライフを増減できます。
         </p>
-        <div class="hero-actions">
-          <a href="/install" class="btn btn-primary btn-lg">今すぐインストール</a>
-          <a href="/guide" class="btn btn-lg">使い方を見る</a>
+      </section>
+
+      <!-- バリアント選択セクション -->
+      <section class="highlight-section">
+        <h2 class="section-title">ファームウェアを選ぶ</h2>
+        <p class="cta-desc">お使いのカードゲームに合ったファームウェアを選んでください。</p>
+        <div class="variant-grid">
+          <a href="/fab/install" class="variant-card">
+            <p class="variant-card-title">for FaB</p>
+            <p class="variant-card-game">Flesh and Blood - 1 対 1</p>
+            <p class="variant-card-desc">
+              上下 2 分割画面で 2 人のライフを管理。外周スライドで直感的に操作。
+              Undo・タッチロック・感度調整など充実した機能を搭載。
+            </p>
+            <span class="variant-card-action">インストールへ</span>
+          </a>
+          <a href="/edh/install" class="variant-card">
+            <p class="variant-card-title">for MTG EDH</p>
+            <p class="variant-card-game">Magic: The Gathering 統率者戦 - 4 人戦</p>
+            <p class="variant-card-desc">
+              4 分割画面で 4 人のライフと統率者ダメージを管理。
+              ライフと統率者ダメージが連動し、21 点で敗北警告を表示。
+            </p>
+            <span class="variant-card-action">インストールへ</span>
+          </a>
         </div>
       </section>
 
@@ -38,11 +60,6 @@
             <p>円形画面の縁をなぞってライフを増減。時計回りで増加、反時計回りで減少。一周で10ライフ分の直感的な操作（感度は変更可能）。</p>
           </div>
           <div class="highlight-card">
-            <div class="highlight-icon" aria-hidden="true">&#x1F465;</div>
-            <h3>2 プレイヤー対応</h3>
-            <p>上下画面で 2 人のライフを独立管理。上側は 180 度回転表示で対戦相手が読みやすい設計。</p>
-          </div>
-          <div class="highlight-card">
             <div class="highlight-icon" aria-hidden="true">&#x21A9;</div>
             <h3>履歴と Undo</h3>
             <p>スライド操作を 1 件ずつ記録（最大 64 件）。ボタン短押しでいつでも Undo 可能。</p>
@@ -51,6 +68,11 @@
             <div class="highlight-icon" aria-hidden="true">&#x1F4F3;</div>
             <h3>振動フィードバック</h3>
             <p>操作のたびに振動で手応えを返します。音は出ないので大会会場でも安心して使えます。</p>
+          </div>
+          <div class="highlight-card">
+            <div class="highlight-icon" aria-hidden="true">&#x1F310;</div>
+            <h3>ブラウザから書き込み</h3>
+            <p>Chrome または Edge と USB-C ケーブルがあれば、ブラウザからすぐにファームウェアを書き込めます。</p>
           </div>
         </div>
       </section>
@@ -62,17 +84,13 @@
           ブラウザからファームウェアを書き込むだけ。Chrome または Edge と USB-C ケーブルがあればすぐに使えます。
         </p>
         <div class="cta-links">
-          <a href="/guide" class="cta-link">
-            <span class="cta-link-title">使い方ガイド</span>
-            <span class="cta-link-desc">セットアップから対戦中の操作まで</span>
+          <a href="/fab/guide" class="cta-link">
+            <span class="cta-link-title">FaB 使い方ガイド</span>
+            <span class="cta-link-desc">Flesh and Blood 向け - セットアップから対戦中の操作まで</span>
           </a>
-          <a href="/features" class="cta-link">
-            <span class="cta-link-title">機能一覧</span>
-            <span class="cta-link-desc">すべての機能を詳しく解説</span>
-          </a>
-          <a href="/install" class="cta-link">
-            <span class="cta-link-title">インストール</span>
-            <span class="cta-link-desc">ファームウェアを書き込む</span>
+          <a href="/edh/guide" class="cta-link">
+            <span class="cta-link-title">EDH 使い方ガイド</span>
+            <span class="cta-link-desc">MTG 統率者戦向け - 4 人戦のライフ・統率者ダメージ管理</span>
           </a>
         </div>
       </section>

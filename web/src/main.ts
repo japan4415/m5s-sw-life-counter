@@ -24,15 +24,27 @@ import {
   formatDate,
 } from "./api";
 import type { Release } from "./api";
+import { detectVariant } from "./nav";
+import type { FirmwareVariant } from "./nav";
+
+// ---- バリアント判定 ----
+const currentVariant: FirmwareVariant = detectVariant() ?? "fab";
+
+/** バリアントに応じたファームウェアファイル名を返す */
+function firmwareFileName(variant: FirmwareVariant): string {
+  return variant === "edh" ? "firmware-edh.bin" : "firmware.bin";
+}
 
 // ---- 書き込み構成（docs/14-web-flasher-design.md §2・§5） ----
+const FIRMWARE_BIN_NAME = firmwareFileName(currentVariant);
+
 const FIRMWARE_FILES_FULL = [
   { name: "bootloader.bin", address: 0x0 },
   { name: "partitions.bin", address: 0x8000 },
   { name: "boot_app0.bin", address: 0xe000 },
-  { name: "firmware.bin", address: 0x10000 },
+  { name: FIRMWARE_BIN_NAME, address: 0x10000 },
 ];
-const FIRMWARE_FILES_UPDATE = [{ name: "firmware.bin", address: 0x10000 }];
+const FIRMWARE_FILES_UPDATE = [{ name: FIRMWARE_BIN_NAME, address: 0x10000 }];
 const FLASH_MODE = "keep" as const;
 const FLASH_FREQ = "keep" as const;
 const FLASH_SIZE = "keep" as const;
@@ -178,11 +190,20 @@ async function loadReleases() {
     return;
   }
 
+  // EDH バリアントでは、対応ファームウェア（firmware-edh.bin）を含むリリースのみ表示する
+  if (currentVariant === "edh") {
+    releases = releases.filter((r) =>
+      r.assets.some((a) => a.name === FIRMWARE_BIN_NAME),
+    );
+  }
+
   if (releases.length === 0) {
     const empty = document.createElement("p");
-    empty.className = "warn-box";
+    empty.className = currentVariant === "edh" ? "info-box" : "warn-box";
     empty.textContent =
-      "リリースがまだありません。初回セットアップはリポジトリの CI で v* タグの Release を作成する必要があります。";
+      currentVariant === "edh"
+        ? "EDH ファームウェアはまだ公開されていません。リリースが公開されると、ここにバージョン一覧が表示されます。"
+        : "リリースがまだありません。初回セットアップはリポジトリの CI で v* タグの Release を作成する必要があります。";
     list.appendChild(empty);
     return;
   }

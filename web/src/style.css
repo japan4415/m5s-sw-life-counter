@@ -566,6 +566,17 @@ code {
   padding-left: 20px;
 }
 
+/* ---- 情報ボックス（未リリース等の穏やかな案内表示） ---- */
+.info-box {
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-elevated));
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin: 12px 0;
+  font-size: 0.92rem;
+  color: var(--fg);
+}
+
 .error-box {
   background: var(--error-bg);
   border: 1px solid var(--error-border);
@@ -844,6 +855,112 @@ code {
 .nav-list a.nav-active {
   color: var(--accent);
   font-weight: 600;
+}
+
+/* ---- バリアント表示（ナビ内） ---- */
+.nav-variant {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+}
+
+.nav-variant-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-radius: 999px;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+
+.nav-variant-switch {
+  font-size: 0.72rem;
+  color: var(--fg-muted);
+  text-decoration: underline;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.nav-variant-switch:hover {
+  color: var(--accent);
+}
+
+/* ---- バリアント選択カード（トップページ） ---- */
+.variant-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.variant-card {
+  display: block;
+  background: var(--bg-elevated);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  text-decoration: none;
+  color: var(--fg);
+  box-shadow: var(--shadow);
+  transition: border-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-med) var(--ease-out),
+    box-shadow var(--dur-med) var(--ease-out);
+}
+
+.variant-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-2);
+}
+
+.variant-card:active {
+  transform: translateY(0);
+}
+
+.variant-card-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.variant-card-game {
+  font-size: 0.85rem;
+  color: var(--fg-muted);
+  margin: 0 0 10px;
+}
+
+.variant-card-desc {
+  font-size: 0.9rem;
+  color: var(--fg-muted);
+  margin: 0 0 12px;
+  line-height: 1.6;
+}
+
+.variant-card-action {
+  display: inline-block;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.variant-card-action::after {
+  content: " \2192";
+  display: inline-block;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.variant-card:hover .variant-card-action::after {
+  transform: translateX(3px);
+}
+
+/* ---- 仕様策定中バナー ---- */
+.draft-banner {
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: 0.88rem;
 }
 
 .nav-toggle {
