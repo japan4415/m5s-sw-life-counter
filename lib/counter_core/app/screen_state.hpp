@@ -10,12 +10,12 @@ namespace counter::app {
 // counter::PlayerId を counter::app からも非修飾で参照できるようにする。
 using counter::PlayerId;
 
-enum class Screen : uint8_t { Setup, Active, Menu, History, About };
+enum class Screen : uint8_t { Setup, Active, Menu, History, About, Sensitivity };
 
 enum class MenuItem : uint8_t {
-    Resume, History, SetLife, Rematch, About
+    Resume, History, SetLife, SetSensitivity, Rematch, About
 };
-constexpr uint8_t kMenuItemCount = 5;
+constexpr uint8_t kMenuItemCount = 6;
 
 // 画面側では実行できず、アプリ層に実行させたい動作。
 // 各入力ハンドラの戻り値として返し、アプリ層が dispatch する。
@@ -45,6 +45,9 @@ public:
     uint32_t setupLife(PlayerId player) const;
     void     setSetupLife(PlayerId player, uint32_t life);
 
+    uint8_t sensitivityIndex() const;
+    void    setSensitivityIndex(uint8_t index);
+
     // 入力。戻り値はアプリ層が実行すべき動作。
     ScreenAction onNext();          // A 短押し
     ScreenAction onSelect();        // B 短押し
@@ -68,6 +71,7 @@ private:
     bool     confirming_  = false;       // Rematch の長押し確認待ち
     MenuItem confirmTarget_ = MenuItem::Resume;  // confirming_ が true のときだけ有効
     uint32_t setupLife_[2] = {kDefaultLife, kDefaultLife};  // [0]=Top, [1]=Bottom
+    uint8_t  sensitivityIndex_ = 1;      // 感度プリセットインデックス（デフォルト: 10 ライフ/周）
     bool     dirty_       = true;        // 初期状態は描画が必要
 
     void markDirty();

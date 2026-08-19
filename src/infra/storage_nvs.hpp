@@ -52,6 +52,15 @@ public:
     /// hasValidState() が true のときのみ有効。
     const counter::domain::MatchState& loadedState() const;
 
+    /// 感度プリセットのインデックスを NVS に保存する。
+    /// 試合状態とは別キー "sens" で管理し、既存スキーマを壊さない。
+    /// @return 書き込み成功時 true。
+    bool saveSensitivity(uint8_t index);
+
+    /// NVS から読み出した感度プリセットのインデックスを返す。
+    /// begin() で読み出し済み。値が存在しない場合はデフォルト値（1 = 10 ライフ/周）。
+    uint8_t loadedSensitivity() const;
+
 private:
     static constexpr uint32_t kMagic         = 0x4C434D53;  // "LCMS" (Life Counter Match State)
     static constexpr uint16_t kSchemaVersion  = 1;
@@ -68,6 +77,7 @@ private:
     int  currentSlot_ = -1;      // 最新レコードのスロット番号（-1 = なし）
     uint32_t currentSeq_ = 0;    // 最新レコードの sequence
     counter::domain::MatchState loadedState_{};
+    uint8_t sensitivityIndex_ = 1;  // デフォルト: 10 ライフ/周（config::kDefaultSensitivityIndex）
 };
 
 }  // namespace counter::infra

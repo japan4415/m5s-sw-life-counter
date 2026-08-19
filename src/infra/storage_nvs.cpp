@@ -7,6 +7,8 @@
 #include <cstdio>
 #include <cstring>
 
+#include "app_config.hpp"
+
 namespace counter::infra {
 
 // ============================================================
@@ -102,6 +104,17 @@ bool StorageNvs::begin() {
         }
     }
 
+    // 感度設定を読み出す（試合状態とは独立したキー "sens"）。
+    // 既存の PersistentRecord スキーマを壊さず、単一の uint8_t として管理する。
+    // キーが存在しない場合（初回起動）はデフォルト値にフォールバックする。
+    {
+        uint8_t sensVal = prefs.getUChar(
+            "sens", static_cast<uint8_t>(config::kDefaultSensitivityIndex));
+        sensitivityIndex_ = (sensVal < config::kSensitivityPresetCount)
+            ? sensVal
+            : static_cast<uint8_t>(config::kDefaultSensitivityIndex);
+    }
+
     prefs.end();
 
     if (hasValid_) {
@@ -173,6 +186,36 @@ const counter::domain::MatchState& StorageNvs::loadedState() const {
     // 動作変更やクラッシュを招かない。
     assert(hasValid_ && "loadedState() は hasValidState() が true のときのみ呼ぶこと");
     return loadedState_;
+}
+
+bool StorageNvs::saveSensitivity(uint8_t index) {
+    if (!initialized_) {
+        return false;
+    }
+
+    Preferences prefs;
+    if (!prefs.begin("lifectr", false)) {
+        Serial.println("[StorageNvs] saveSensitivity: NVS を開けませんでした");
+        prefs.end();
+        return false;
+    }
+
+    size_t written = prefs.putUChar("sens", index);
+    prefs.end();
+
+    if (written == 0) {
+        Serial.println("[StorageNvs] saveSensitivity: 書き込み失敗");
+        return false;
+    }
+
+    sensitivityIndex_ = index;
+    Serial.printf("[StorageNvs] 感度プリセット %u を保存\n",
+                  static_cast<unsigned>(index));
+    return true;
+}
+
+uint8_t StorageNvs::loadedSensitivity() const {
+    return sensitivityIndex_;
 }
 
 }  // namespace counter::infra

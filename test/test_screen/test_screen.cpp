@@ -3,7 +3,8 @@
 // ScreenState のホスト単体テスト（L1）
 // NewGame 統合（issue #15）後のメニュー構成・画面遷移を検証する。
 // Swap Sides 削除（issue #16）後、kMenuItemCount は 5 に変更された。
-// メニュー構成: Resume=0, History=1, SetLife=2, Rematch=3, About=4
+// Sensitivity 追加（issue #38）後、kMenuItemCount は 6 に変更された。
+// メニュー構成: Resume=0, History=1, SetLife=2, SetSensitivity=3, Rematch=4, About=5
 
 #include <unity.h>
 #include <cstdint>
@@ -24,16 +25,16 @@ void tearDown(void) {
 }
 
 // ========================================================================
-// 1. kMenuItemCount の回帰テスト（issue #16: SwapSides 削除後は 5）
+// 1. kMenuItemCount の回帰テスト（issue #38: Sensitivity 追加後は 6）
 // ========================================================================
 
-// kMenuItemCount が 5 であること（SwapSides 削除前は 6 だった）
-void test_menu_item_count_is_5(void) {
-    TEST_ASSERT_EQUAL_UINT8(5, kMenuItemCount);
+// kMenuItemCount が 6 であること（Sensitivity 追加前は 5 だった）
+void test_menu_item_count_is_6(void) {
+    TEST_ASSERT_EQUAL_UINT8(6, kMenuItemCount);
 }
 
 // ========================================================================
-// 2. メニューインデックスの循環（0..4）
+// 2. メニューインデックスの循環（0..5）
 // ========================================================================
 
 // reset() 後のメニューインデックスが 0 であること
@@ -41,7 +42,7 @@ void test_menu_index_initial_is_zero(void) {
     TEST_ASSERT_EQUAL_UINT8(0, ss.menuIndex());
 }
 
-// onNext() でメニューインデックスが 0 から 4 まで順に進むこと
+// onNext() でメニューインデックスが 0 から 5 まで順に進むこと
 void test_menu_index_increments_through_all_items(void) {
     // Active → Menu を開く
     ss.enterActive();
@@ -52,24 +53,24 @@ void test_menu_index_increments_through_all_items(void) {
     // 初期位置は 0（Resume）
     TEST_ASSERT_EQUAL_UINT8(0, ss.menuIndex());
 
-    // onNext() を 4 回呼ぶと 1, 2, 3, 4 と進む
+    // onNext() を 5 回呼ぶと 1, 2, 3, 4, 5 と進む
     for (uint8_t i = 1; i < kMenuItemCount; ++i) {
         ss.onNext();
         TEST_ASSERT_EQUAL_UINT8(i, ss.menuIndex());
     }
 }
 
-// インデックス 4（最後の項目）で onNext() を呼ぶと 0 に戻ること
+// インデックス 5（最後の項目）で onNext() を呼ぶと 0 に戻ること
 void test_menu_index_wraps_around_to_zero(void) {
     // Active → Menu を開く
     ss.enterActive();
     ss.onCloseMenu();
 
-    // インデックスを 4（最後）まで進める
+    // インデックスを 5（最後）まで進める
     for (uint8_t i = 0; i < kMenuItemCount - 1; ++i) {
         ss.onNext();
     }
-    TEST_ASSERT_EQUAL_UINT8(4, ss.menuIndex());
+    TEST_ASSERT_EQUAL_UINT8(5, ss.menuIndex());
 
     // もう一回 onNext() → 0 に戻る
     ss.onNext();
@@ -177,9 +178,83 @@ void test_set_life_to_setup_then_start_match(void) {
                           static_cast<int>(ss.screen()));
 }
 
-// Rematch（インデックス 3）: 選択すると確認待ちになり、None を返す
-void test_select_rematch_enters_confirm(void) {
+// SetSensitivity（インデックス 3）: 選択すると Sensitivity 画面に遷移し、None を返す
+void test_select_set_sensitivity_goes_to_sensitivity_screen(void) {
     openMenuAndMoveTo(3);
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(MenuItem::SetSensitivity),
+                          static_cast<int>(ss.menuItem()));
+
+    ScreenAction action = ss.onSelect();
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(ScreenAction::None),
+                          static_cast<int>(action));
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(Screen::Sensitivity),
+                          static_cast<int>(ss.screen()));
+}
+
+// Sensitivity 画面で onNext() がプリセットを循環すること
+void test_sensitivity_next_cycles_presets(void) {
+    openMenuAndMoveTo(3);
+    ss.onSelect();  // Menu → Sensitivity
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(Screen::Sensitivity),
+                          static_cast<int>(ss.screen()));
+
+    // デフォルトは 1（10 ライフ/周）
+    TEST_ASSERT_EQUAL_UINT8(1, ss.sensitivityIndex());
+
+    // onNext() → 2（20 ライフ/周）
+    ss.onNext();
+    TEST_ASSERT_EQUAL_UINT8(2, ss.sensitivityIndex());
+
+    // onNext() → 0（5 ライフ/周）— ラップアラウンド
+    ss.onNext();
+    TEST_ASSERT_EQUAL_UINT8(0, ss.sensitivityIndex());
+
+    // onNext() → 1（10 ライフ/周）— 一周
+    ss.onNext();
+    TEST_ASSERT_EQUAL_UINT8(1, ss.sensitivityIndex());
+}
+
+// Sensitivity 画面で onSelect() → Menu に戻ること
+void test_sensitivity_select_returns_to_menu(void) {
+    openMenuAndMoveTo(3);
+    ss.onSelect();  // Menu → Sensitivity
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(Screen::Sensitivity),
+                          static_cast<int>(ss.screen()));
+
+    ScreenAction action = ss.onSelect();
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(ScreenAction::None),
+                          static_cast<int>(action));
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(Screen::Menu),
+                          static_cast<int>(ss.screen()));
+}
+
+// Sensitivity 画面で onCloseMenu() → Menu に戻ること
+void test_sensitivity_close_menu_returns_to_menu(void) {
+    openMenuAndMoveTo(3);
+    ss.onSelect();  // Menu → Sensitivity
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(Screen::Sensitivity),
+                          static_cast<int>(ss.screen()));
+
+    ScreenAction action = ss.onCloseMenu();
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(ScreenAction::None),
+                          static_cast<int>(action));
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(Screen::Menu),
+                          static_cast<int>(ss.screen()));
+}
+
+// sensitivityIndex が reset() で変わらないこと（永続的な設定）
+void test_sensitivity_index_survives_reset(void) {
+    ss.setSensitivityIndex(2);
+    TEST_ASSERT_EQUAL_UINT8(2, ss.sensitivityIndex());
+
+    ss.reset();
+    // reset() は sensitivityIndex_ を変更しない
+    TEST_ASSERT_EQUAL_UINT8(2, ss.sensitivityIndex());
+}
+
+// Rematch（インデックス 4）: 選択すると確認待ちになり、None を返す
+void test_select_rematch_enters_confirm(void) {
+    openMenuAndMoveTo(4);
     TEST_ASSERT_EQUAL_INT(static_cast<int>(MenuItem::Rematch),
                           static_cast<int>(ss.menuItem()));
 
@@ -193,7 +268,7 @@ void test_select_rematch_enters_confirm(void) {
 
 // Rematch 確認待ちで長押し → Rematch アクションが返り Active に遷移する
 void test_confirm_rematch_returns_rematch_action(void) {
-    openMenuAndMoveTo(3);
+    openMenuAndMoveTo(4);
     ss.onSelect();  // 確認待ちに入る
     TEST_ASSERT_TRUE(ss.awaitingConfirm());
 
@@ -205,9 +280,9 @@ void test_confirm_rematch_returns_rematch_action(void) {
     TEST_ASSERT_FALSE(ss.awaitingConfirm());
 }
 
-// About（インデックス 4）: 選択すると About 画面に遷移し、None を返す
+// About（インデックス 5）: 選択すると About 画面に遷移し、None を返す
 void test_select_about_goes_to_about_screen(void) {
-    openMenuAndMoveTo(4);
+    openMenuAndMoveTo(5);
     TEST_ASSERT_EQUAL_INT(static_cast<int>(MenuItem::About),
                           static_cast<int>(ss.menuItem()));
 
@@ -307,7 +382,7 @@ void test_menu_close_menu_returns_to_active(void) {
 
 // Menu を閉じると確認待ちが解除されること
 void test_close_menu_clears_confirm(void) {
-    openMenuAndMoveTo(3);  // Rematch
+    openMenuAndMoveTo(4);  // Rematch
     ss.onSelect();         // 確認待ちに入る
     TEST_ASSERT_TRUE(ss.awaitingConfirm());
 
@@ -347,7 +422,7 @@ void test_history_close_menu_returns_to_menu(void) {
 
 // About 画面で onCloseMenu() → Menu に戻ること
 void test_about_close_menu_returns_to_menu(void) {
-    openMenuAndMoveTo(4);  // About
+    openMenuAndMoveTo(5);  // About
     ss.onSelect();         // Menu → About
     TEST_ASSERT_EQUAL_INT(static_cast<int>(Screen::About),
                           static_cast<int>(ss.screen()));
@@ -375,7 +450,7 @@ void test_history_select_returns_to_menu(void) {
 
 // About 画面で onSelect() → Menu に戻ること
 void test_about_select_returns_to_menu(void) {
-    openMenuAndMoveTo(4);
+    openMenuAndMoveTo(5);
     ss.onSelect();  // Menu → About
     TEST_ASSERT_EQUAL_INT(static_cast<int>(Screen::About),
                           static_cast<int>(ss.screen()));
@@ -393,7 +468,7 @@ void test_about_select_returns_to_menu(void) {
 
 // Menu で onNext() すると確認待ちが解除されること
 void test_menu_next_clears_confirm(void) {
-    openMenuAndMoveTo(3);  // Rematch
+    openMenuAndMoveTo(4);  // Rematch
     ss.onSelect();         // 確認待ちに入る
     TEST_ASSERT_TRUE(ss.awaitingConfirm());
 
@@ -438,7 +513,7 @@ int main(int argc, char** argv) {
     UNITY_BEGIN();
 
     // 1. kMenuItemCount の回帰テスト
-    RUN_TEST(test_menu_item_count_is_5);
+    RUN_TEST(test_menu_item_count_is_6);
 
     // 2. メニューインデックスの循環
     RUN_TEST(test_menu_index_initial_is_zero);
@@ -452,6 +527,11 @@ int main(int argc, char** argv) {
     RUN_TEST(test_select_history_goes_to_history_screen);
     RUN_TEST(test_select_set_life_goes_to_setup_screen);
     RUN_TEST(test_set_life_to_setup_then_start_match);
+    RUN_TEST(test_select_set_sensitivity_goes_to_sensitivity_screen);
+    RUN_TEST(test_sensitivity_next_cycles_presets);
+    RUN_TEST(test_sensitivity_select_returns_to_menu);
+    RUN_TEST(test_sensitivity_close_menu_returns_to_menu);
+    RUN_TEST(test_sensitivity_index_survives_reset);
     RUN_TEST(test_select_rematch_enters_confirm);
     RUN_TEST(test_confirm_rematch_returns_rematch_action);
     RUN_TEST(test_select_about_goes_to_about_screen);

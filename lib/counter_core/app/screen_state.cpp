@@ -1,5 +1,7 @@
 #include "app/screen_state.hpp"
 
+#include "app_config.hpp"
+
 namespace counter::app {
 
 void ScreenState::reset() {
@@ -45,6 +47,17 @@ void ScreenState::setSetupLife(PlayerId player, uint32_t life) {
     markDirty();
 }
 
+uint8_t ScreenState::sensitivityIndex() const {
+    return sensitivityIndex_;
+}
+
+void ScreenState::setSensitivityIndex(uint8_t index) {
+    // アプリ層が NVS から読み出した値を設定する。
+    // reset() では変更しない（感度はユーザーの永続的な設定であるため）。
+    sensitivityIndex_ = index;
+    markDirty();
+}
+
 // --- 入力ハンドラ ---
 
 ScreenAction ScreenState::onNext() {
@@ -69,6 +82,14 @@ ScreenAction ScreenState::onNext() {
         menuIndex_  = (menuIndex_ + 1) % kMenuItemCount;
         markDirty();
         return ScreenAction::None;
+
+    case Screen::Sensitivity: {
+        // 感度プリセットを順にトグルする（5 → 10 → 20 → 5 → ...）。
+        sensitivityIndex_ =
+            (sensitivityIndex_ + 1) % config::kSensitivityPresetCount;
+        markDirty();
+        return ScreenAction::None;
+    }
 
     default:
         // Active / History / About: onNext() に割り当てられた動作はない。
@@ -107,6 +128,14 @@ ScreenAction ScreenState::onSelect() {
             markDirty();
             return ScreenAction::None;
 
+        case MenuItem::SetSensitivity:
+            // Sensitivity 画面へ遷移する。SetLife → Setup と同じパターン。
+            // 現在の感度値は sensitivityIndex_ に保持されているため、
+            // アプリ層での追加処理は不要。
+            screen_ = Screen::Sensitivity;
+            markDirty();
+            return ScreenAction::None;
+
         case MenuItem::Rematch:
             // 確認待ちにする。長押しで実行を確定する 2 段階操作。
             // 対戦中にうっかりメニューから即 Rematch してしまうのを防ぐ。
@@ -133,6 +162,13 @@ ScreenAction ScreenState::onSelect() {
 
     case Screen::About:
         // About からは Menu に戻る。
+        screen_ = Screen::Menu;
+        markDirty();
+        return ScreenAction::None;
+
+    case Screen::Sensitivity:
+        // Sensitivity からは Menu に戻る。
+        // 感度の反映と NVS 保存はアプリ層が画面遷移を検出して行う。
         screen_ = Screen::Menu;
         markDirty();
         return ScreenAction::None;
@@ -206,6 +242,12 @@ ScreenAction ScreenState::onCloseMenu() {
 
     case Screen::About:
         // About から Menu へ戻る。
+        screen_ = Screen::Menu;
+        markDirty();
+        return ScreenAction::None;
+
+    case Screen::Sensitivity:
+        // Sensitivity から Menu へ戻る。
         screen_ = Screen::Menu;
         markDirty();
         return ScreenAction::None;

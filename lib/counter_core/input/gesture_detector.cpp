@@ -116,7 +116,7 @@ void GestureDetector::onTouchMove(int16_t x, int16_t y, uint32_t nowMs) {
     // static_cast<int32_t> はゼロ方向への切り捨て。
     // 例: accumDeg_ = -15 -> steps = -1、accumDeg_ = 15 -> steps = 1
     const int32_t currentStep =
-        static_cast<int32_t>(accumDeg_ / config::kDegreesPerLife);
+        static_cast<int32_t>(accumDeg_ / degreesPerLife_);
 
     // 段階が変わったかを記録する（Haptics の振動フィードバック判定用）。
     // consumeStepChanged() で 1 回だけ読み取れる。
@@ -134,7 +134,7 @@ GestureResult GestureDetector::onTouchUp(uint32_t /*nowMs*/) {
 
     if (state_ == GestureState::Active) {
         const int32_t steps =
-            static_cast<int32_t>(accumDeg_ / config::kDegreesPerLife);
+            static_cast<int32_t>(accumDeg_ / degreesPerLife_);
         if (steps != 0) {
             result.committed = true;
             result.deltaLife = steps;
@@ -162,7 +162,7 @@ GesturePreview GestureDetector::preview() const {
     // プレビューは Active 状態でのみ意味がある。
     // Candidate ではまだプレビューを表示しない（最低移動角に達していない）。
     p.deltaLife = p.active
-                      ? static_cast<int32_t>(accumDeg_ / config::kDegreesPerLife)
+                      ? static_cast<int32_t>(accumDeg_ / degreesPerLife_)
                       : 0;
     return p;
 }
@@ -173,6 +173,10 @@ bool GestureDetector::consumeStepChanged() {
     const bool changed = stepChanged_;
     stepChanged_ = false;
     return changed;
+}
+
+void GestureDetector::setDegreesPerLife(float degreesPerLife) {
+    degreesPerLife_ = degreesPerLife;
 }
 
 bool GestureDetector::consumeRejectedStart() {

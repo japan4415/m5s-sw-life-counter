@@ -202,26 +202,26 @@ constexpr uint16_t kSetupStartColor          = 0x07FF;  // シアン（START 強
 // ============================================================
 // メニュー画面
 // ============================================================
-// 5 項目を画面中央に縦並べし、選択中の項目を強調する。
+// 6 項目を画面中央に縦並べし、選択中の項目を強調する。
 // 長押し確認時は外周に円弧プログレスを表示する。
 // 画面中心 (234) を基準に上寄り配置:
-//   先頭 y=157 (距離 77)、末尾 y=253 (距離 19)、中央 y=205 (距離 29)。
+//   先頭 y=157 (距離 77)、末尾 y=277 (距離 43)。
 //
 // なぜ 24px 間隔か:
-//   5 項目 × 24px 間隔で末尾 y = 157 + 4*24 = 253。
-//   確認メッセージ (y=330) との隙間 77px を十分に確保できる。
+//   6 項目 × 24px 間隔で末尾 y = 157 + 5*24 = 277。
+//   確認メッセージ (y=330) との隙間 53px を十分に確保できる。
 //   ADR-22 で 8 項目時に 22px へ詰めた経緯があるが、Sleep 廃止 (ADR-24)・
 //   New Game 統合 (ADR-25, #15)・Swap Sides 削除 (ADR-26, #16) を経て
-//   5 項目になり 24px を維持している。
+//   5 項目になり 24px を維持。#38 で Sensitivity を追加し 6 項目。
 //
 // 円形画面への収まり検証 (半径 165 の内側に全項目が収まること):
 //   最も中心から遠い項目 (y=157) の中心距離 = 77px。
 //   半径 165 の円で d=77 のとき利用可能横幅 = 2*sqrt(165^2 - 77^2) ≈ 292px。
-//   最長項目 "> Set Life" ≈ 10文字 * 12px = 120px < 292px → 収まる。
+//   最長項目 "> Sensitivity" ≈ 13文字 * 12px = 156px < 292px → 収まる。
 //
 // 衝突チェック:
 //   バッテリー (y=138, icon h=14px): 下端 y=145。先頭上端 y=149。隙間 4px。
-//   末尾 (y=253, textSize=2.0, h=16px): 下端 y=261。確認 (y=330) 上端 y=324。隙間 63px。
+//   末尾 (y=277, textSize=2.0, h=16px): 下端 y=285。確認 (y=330) 上端 y=324。隙間 39px。
 
 // メニュー項目の配置
 constexpr int32_t kMenuFirstItemY  = 157;  // 最初の項目の中心 y
@@ -370,5 +370,38 @@ constexpr float kAboutFooterFontSize  = 1.0f;
 
 constexpr uint16_t kAboutTitleColor   = 0xFFFF;  // 白
 constexpr uint16_t kAboutVersionColor = 0x8410;  // グレー
+
+// ============================================================
+// 感度設定画面
+// ============================================================
+// 一周あたりのライフ変動量をプリセットから選択する画面。
+// About 画面に近いレイアウトだが、プリセット選択 UI を持つ。
+//
+// 垂直配置:
+//   タイトル     y=175  (中心から 59px 上)
+//   数値         y=220  (中心から 14px 上)
+//   ラベル       y=255  (中心から 21px 下)
+//   プリセット   y=290  (中心から 56px 下)
+//   ヒント       y=350  (中心から 116px 下)
+//
+// 最も遠い要素 (y=350): 距離 116px。
+// 半径 165 の円で d=116 のとき利用可能横幅 = 2*sqrt(165^2 - 116^2) ≈ 234px。
+// "A: Change  B: OK" ≈ 18 chars * 6px = 108px < 234px → 収まる。
+
+constexpr int32_t kSensitivityTitleY   = 175;
+constexpr int32_t kSensitivityValueY   = 220;
+constexpr int32_t kSensitivityLabelY   = 255;
+constexpr int32_t kSensitivityPresetY  = 290;
+constexpr int32_t kSensitivityHintY    = 350;
+
+constexpr float kSensitivityTitleFontSize  = 2.0f;
+constexpr float kSensitivityValueFontSize  = 5.0f;
+constexpr float kSensitivityLabelFontSize  = 1.5f;
+constexpr float kSensitivityPresetFontSize = 2.0f;
+constexpr float kSensitivityHintFontSize   = 1.0f;
+
+constexpr uint16_t kSensitivityTitleColor = 0xFFFF;  // 白
+constexpr uint16_t kSensitivityValueColor = 0xFFFF;  // 白
+constexpr uint16_t kSensitivityLabelColor = 0x8410;  // グレー
 
 }  // namespace counter::ui::theme
