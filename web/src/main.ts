@@ -29,6 +29,7 @@ import type { Release } from "./api";
 const FIRMWARE_FILES_FULL = [
   { name: "bootloader.bin", address: 0x0 },
   { name: "partitions.bin", address: 0x8000 },
+  { name: "boot_app0.bin", address: 0xe000 },
   { name: "firmware.bin", address: 0x10000 },
 ];
 const FIRMWARE_FILES_UPDATE = [{ name: "firmware.bin", address: 0x10000 }];
@@ -629,12 +630,19 @@ function bindFlashMode() {
     const files = buildFlashFiles(state.mode);
     const missing = files.filter((f) => !f.assetPresent);
     if (missing.length > 0) {
+      const missingNames = missing.map((f) => f.name);
+      const isBootApp0Only =
+        missingNames.length === 1 && missingNames[0] === "boot_app0.bin";
       showError(
         "flash-error",
         "flash-error-text",
         "flash-error-hint",
-        "書き込み対象のファイルがリリースに含まれていません。",
-        `リリース構成（bootloader.bin / partitions.bin / firmware.bin / ${SHA256S_SUMS}）を確認してください。欠落: ${missing.map((f) => f.name).join(", ")}`,
+        isBootApp0Only
+          ? "このリリースはフルフラッシュに対応していません。"
+          : "書き込み対象のファイルがリリースに含まれていません。",
+        isBootApp0Only
+          ? "フルフラッシュに必要な boot_app0.bin がリリースに含まれていません。「アプリ更新」モードを使用するか、boot_app0.bin が含まれるリリースを選択してください。"
+          : `リリース構成（bootloader.bin / partitions.bin / boot_app0.bin / firmware.bin / ${SHA256S_SUMS}）を確認してください。欠落: ${missingNames.join(", ")}`,
       );
       return;
     }
