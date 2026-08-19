@@ -3,6 +3,11 @@ name: Release Firmware
 # v* タグの push をトリガーにファームウェアをビルドし、
 # GitHub Release に固定名アセット（bootloader/partitions/firmware + SHA-256）を添付する。
 # アセット名は Web フラッシャー側（/api/firmware/:tag/:file）の取得規約と一致させること。
+#
+# ファームウェアバリアント:
+#   firmware.bin     — FaB (Flesh and Blood) 用
+#   firmware-edh.bin — EDH (Magic: The Gathering 統率者戦) 用
+# bootloader.bin / partitions.bin / boot_app0.bin は両バリアント共通。
 on:
   push:
     tags:
@@ -56,8 +61,11 @@ jobs:
             ${{ runner.os }}-platformio-${{ steps.pio-version.outputs.version }}-
             ${{ runner.os }}-platformio-
 
-      - name: Build firmware
+      - name: Build firmware (FaB)
         run: pio run -e m5stack-stopwatch
+
+      - name: Build firmware (EDH)
+        run: pio run -e m5stack-stopwatch-edh
 
       - name: Stage release assets
         run: |
@@ -65,6 +73,7 @@ jobs:
           cp .pio/build/m5stack-stopwatch/bootloader.bin release-assets/
           cp .pio/build/m5stack-stopwatch/partitions.bin release-assets/
           cp .pio/build/m5stack-stopwatch/firmware.bin release-assets/
+          cp .pio/build/m5stack-stopwatch-edh/firmware.bin release-assets/firmware-edh.bin
 
           # boot_app0.bin: OTA データパーティション (0xe000) の初期化バイナリ。
           # フルフラッシュ（全消去）後にブートローダーが起動スロットを決定するために必須。
@@ -81,7 +90,7 @@ jobs:
       - name: Generate SHA-256 checksums
         run: |
           cd release-assets
-          sha256sum bootloader.bin partitions.bin boot_app0.bin firmware.bin > sha256sums.txt
+          sha256sum bootloader.bin partitions.bin boot_app0.bin firmware.bin firmware-edh.bin > sha256sums.txt
 
       # 冪等性: 同一タグで再実行した場合、既存の Release を編集（アセット追加）し、
       # 同名アセット（bootloader.bin 等）は削除してから再アップロードされるため重複しない
@@ -94,5 +103,6 @@ jobs:
             release-assets/partitions.bin
             release-assets/boot_app0.bin
             release-assets/firmware.bin
+            release-assets/firmware-edh.bin
             release-assets/sha256sums.txt
           generate_release_notes: true
