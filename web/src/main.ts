@@ -33,9 +33,9 @@ const FIRMWARE_FILES_FULL = [
   { name: "firmware.bin", address: 0x10000 },
 ];
 const FIRMWARE_FILES_UPDATE = [{ name: "firmware.bin", address: 0x10000 }];
-const FLASH_MODE = "qio" as const;
-const FLASH_FREQ = "80m" as const;
-const FLASH_SIZE = "16MB" as const;
+const FLASH_MODE = "keep" as const;
+const FLASH_FREQ = "keep" as const;
+const FLASH_SIZE = "keep" as const;
 const EXPECTED_CHIP = "ESP32-S3";
 const SHA256S_SUMS = "sha256sums.txt";
 
