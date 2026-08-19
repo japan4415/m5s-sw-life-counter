@@ -305,6 +305,8 @@ flowchart LR
     B -.Workers Builds 接続後.-> D["push で自動デプロイ"]
 ```
 
+- **注意（dev サーバー）**: `yarn dev`（Vite dev サーバー）では Cloudflare Worker が動作しないため、`/api/releases` 等の API エンドポイントは HTML を返す。install ページのリリース一覧を確認するには `wrangler dev` を使用すること
+
 1. **初回（手動）**: `wrangler login` → `web/` で `npm run build` → `wrangler deploy`
 2. **自動化（Workers Builds）**: Cloudflare Dashboard → Worker → Settings → Builds → Connect（GitHub App）でリポジトリ/ブランチを接続する。設定値:
    - ビルドコマンド: `npm run build`（任意）

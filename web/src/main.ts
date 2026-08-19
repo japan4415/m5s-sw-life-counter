@@ -190,12 +190,11 @@ async function loadReleases() {
     return;
   }
 
-  // EDH バリアントでは、対応ファームウェア（firmware-edh.bin）を含むリリースのみ表示する
-  if (currentVariant === "edh") {
-    releases = releases.filter((r) =>
-      r.assets.some((a) => a.name === FIRMWARE_BIN_NAME),
-    );
-  }
+  // 対応ファームウェアをアセットに含むリリースのみ表示する
+  // FaB: firmware.bin を含むリリース / EDH: firmware-edh.bin を含むリリース
+  releases = releases.filter((r) =>
+    r.assets.some((a) => a.name === FIRMWARE_BIN_NAME),
+  );
 
   if (releases.length === 0) {
     const empty = document.createElement("p");
