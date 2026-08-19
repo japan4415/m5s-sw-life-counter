@@ -64,12 +64,19 @@ function initNav(): void {
   inner.appendChild(list);
   container.appendChild(inner);
 
-  // Mobile toggle
+  // モバイルメニュー開閉
   toggle.addEventListener("click", () => {
     const expanded = toggle.getAttribute("aria-expanded") === "true";
     toggle.setAttribute("aria-expanded", String(!expanded));
     list.classList.toggle("nav-open");
   });
+
+  // スクロールエッジ: ページスクロール時に .is-scrolled をトグル
+  const onScroll = (): void => {
+    container.classList.toggle("is-scrolled", window.scrollY > 0);
+  };
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
 }
 
 initNav();
