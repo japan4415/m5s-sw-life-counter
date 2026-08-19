@@ -5,7 +5,7 @@ M5Stack StopWatch Dev Kit (ESP32-S3) 上で動作する、Flesh and Blood (FaB) 
 
 ## ステータス
 
-**設計フェーズ** -- 設計ドキュメントを整備中。実装コードは未着手である。
+**ファームウェア v1.0.0 リリース済み** -- [Web Flasher](https://m5s-sw-life-counter.discord.jp/install) からブラウザ経由でインストールできる。
 
 ## 主要な特徴
 
@@ -22,7 +22,7 @@ M5Stack StopWatch Dev Kit (ESP32-S3) 上で動作する、Flesh and Blood (FaB) 
 
 > **注意**: データ通信対応の USB-C ケーブルが必須である。充電専用ケーブルではデバイスを認識しない。
 
-> **前提条件**: 本リポジトリは設計フェーズであり、実装コードは未着手である。以下は環境構築を終えた後のコマンド例である。初めての場合は [docs/02-dev-environment.md](docs/02-dev-environment.md) の手順から始めること。
+> **前提条件**: 以下は開発者向けの手順である。環境構築がまだの場合は [docs/02-dev-environment.md](docs/02-dev-environment.md) の手順から始めること。エンドユーザーは [Web Flasher](https://m5s-sw-life-counter.discord.jp/install) からインストールできる。
 
 1. USB-C ケーブルで Mac に接続し、ポートを確認する:
 

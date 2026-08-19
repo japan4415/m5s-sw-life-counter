@@ -148,7 +148,7 @@ ScreenAction ScreenState::onLongPressB() {
 
     case Screen::Setup:
         // Setup の確定は長押しのみとする。
-        // 短押しでは何もせず（onSelect 参照）、1.5 秒の長押しで初めて確定する。
+        // 短押しでは何もせず（onSelect 参照）、1 秒の長押しで初めて確定する。
         // これにより A ボタン（プリセット切り替え）と B ボタンの押し間違いによる
         // 意図しない試合開始を防止する。
         screen_ = Screen::Active;
