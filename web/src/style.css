@@ -321,6 +321,39 @@ code {
   overflow: hidden;
 }
 
+/* ---- リリースセクション・グループ ---- */
+.release-section-label {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--fg-muted);
+}
+
+.release-group {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  padding: 8px 14px;
+  font-size: 0.92rem;
+}
+
+.release-group summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.release-group-major {
+  margin-top: 8px;
+  background: var(--bg-elevated);
+}
+
+.release-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 /* ---- アセット表 / ファイル表 ---- */
 .asset-table {
   display: flex;

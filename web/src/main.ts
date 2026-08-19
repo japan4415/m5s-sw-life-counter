@@ -93,6 +93,64 @@ function showStep(n: number) {
 }
 
 // ---- ステップ 1: リリース選択 ----
+
+/** tag_name からメジャーバージョン番号を取得する（パースできない場合は null） */
+function parseMajorVersion(tagName: string): number | null {
+  const stripped = tagName.replace(/^v/i, "");
+  const match = stripped.match(/^(\d+)/);
+  if (!match) return null;
+  const major = parseInt(match[1], 10);
+  return Number.isFinite(major) ? major : null;
+}
+
+type MajorGroup = {
+  major: number | null;
+  label: string;
+  releases: Release[];
+};
+
+/** リリース配列をメジャーバージョンごとにグループ化する（降順、パース不能は「その他」として末尾） */
+function groupByMajorVersion(releases: Release[]): MajorGroup[] {
+  const numbered = new Map<number, Release[]>();
+  let otherReleases: Release[] | undefined;
+  for (const release of releases) {
+    const major = parseMajorVersion(release.tag_name);
+    if (major == null) {
+      (otherReleases ??= []).push(release);
+    } else {
+      const existing = numbered.get(major);
+      if (existing) {
+        existing.push(release);
+      } else {
+        numbered.set(major, [release]);
+      }
+    }
+  }
+
+  const groups: MajorGroup[] = [];
+
+  // メジャー番号の降順
+  const majors = [...numbered.keys()].sort((a, b) => b - a);
+  for (const major of majors) {
+    groups.push({
+      major,
+      label: `v${major}.x`,
+      releases: numbered.get(major)!,
+    });
+  }
+
+  // パース不能なタグは「その他」として末尾
+  if (otherReleases) {
+    groups.push({
+      major: null,
+      label: "その他",
+      releases: otherReleases,
+    });
+  }
+
+  return groups;
+}
+
 async function loadReleases() {
   const list = el<HTMLDivElement>("release-list");
   list.innerHTML = "";
@@ -128,17 +186,54 @@ async function loadReleases() {
 
   // 既定 = 最新の安定版（prerelease でない最初のリリース）。安定版 0 件の場合は明示選択を要求
   const defaultRelease = releases.find((r) => !r.prerelease) ?? null;
-  for (const release of releases) {
-    list.appendChild(createReleaseCard(release, release === defaultRelease));
-  }
-  if (defaultRelease) {
-    await selectRelease(defaultRelease);
-  } else {
+  const latestRelease = defaultRelease ?? releases[0];
+
+  // 「最新バージョン」セクション
+  const latestLabel = document.createElement("p");
+  latestLabel.className = "release-section-label";
+  latestLabel.textContent = "最新バージョン";
+  list.appendChild(latestLabel);
+  list.appendChild(createReleaseCard(latestRelease, defaultRelease != null));
+
+  if (!defaultRelease) {
     const note = document.createElement("p");
     note.className = "muted small";
     note.textContent =
       "安定版（正式リリース）がまだありません。試験版（prerelease）から明示的に選択してください。";
-    list.prepend(note);
+    list.appendChild(note);
+  }
+
+  // 過去のファームウェア（最新バージョン以外のリリースが 1 件以上ある場合のみ）
+  const olderReleases = releases.filter((r) => r !== latestRelease);
+  if (olderReleases.length > 0) {
+    const groups = groupByMajorVersion(olderReleases);
+    const pastDetails = document.createElement("details");
+    pastDetails.className = "release-group";
+    const pastSummary = document.createElement("summary");
+    pastSummary.textContent = "過去のファームウェア";
+    pastDetails.appendChild(pastSummary);
+
+    for (const group of groups) {
+      const groupDetails = document.createElement("details");
+      groupDetails.className = "release-group release-group-major";
+      const groupSummary = document.createElement("summary");
+      groupSummary.textContent = `${group.label}（${group.releases.length}件）`;
+      groupDetails.appendChild(groupSummary);
+
+      const groupList = document.createElement("div");
+      groupList.className = "release-group-list";
+      for (const release of group.releases) {
+        groupList.appendChild(createReleaseCard(release, false));
+      }
+      groupDetails.appendChild(groupList);
+      pastDetails.appendChild(groupDetails);
+    }
+
+    list.appendChild(pastDetails);
+  }
+
+  if (defaultRelease) {
+    await selectRelease(defaultRelease);
   }
 }
 
