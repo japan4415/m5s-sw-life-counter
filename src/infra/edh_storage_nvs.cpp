@@ -147,8 +147,11 @@ bool EdhStorageNvs::save(const counter::edh::MatchState& state) {
     prefs.end();
 
     if (written != sizeof(rec)) {
-        Serial.printf("[EdhStorageNvs] save: スロット %d への書き込み失敗 (%u bytes)\n",
-                      nextSlot, static_cast<unsigned>(written));
+        Serial.printf("[EdhStorageNvs] save: スロット %d への書き込み失敗 "
+                      "(written=%u, expected=%u, recSize=%u)\n",
+                      nextSlot, static_cast<unsigned>(written),
+                      static_cast<unsigned>(sizeof(rec)),
+                      static_cast<unsigned>(sizeof(rec)));
         return false;
     }
 

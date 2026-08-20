@@ -82,12 +82,8 @@ void EdhScreenState::onInnerTap(uint8_t playerIndex, uint32_t nowMs) {
         selectedSource_ = kSourceNone;
         markDirty();
     } else {
-        // 他プレイヤーが CmdDamageView を開いている →
-        // このタップは「被弾元選択」として解釈される。
-        // selectSource() で処理すべきだが、onInnerTap() が呼ばれた場合は
-        // アプリ層が「自分の扇形か他の扇形か」を判断して呼び分ける前提。
-        // ここでは自分の扇形のタップ以外は無視する。
-        // （他扇形のタップは selectSource() 経由で呼ばれる）
+        // 他プレイヤーが CmdDamageView を開いている間の他扇形タップ →
+        // 被弾元選択はスライドで行う方式に変更したため、タップは無視する。
     }
 }
 
@@ -99,6 +95,10 @@ void EdhScreenState::selectSource(uint8_t sourceIndex, uint32_t nowMs) {
     lastActivityMs_ = nowMs;
     selectedSource_ = sourceIndex;
     markDirty();
+}
+
+void EdhScreenState::clearSource() {
+    selectedSource_ = kSourceNone;
 }
 
 void EdhScreenState::checkTimeout(uint32_t nowMs) {

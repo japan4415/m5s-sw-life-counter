@@ -13,6 +13,7 @@
 #include "edh_app_controller.hpp"
 
 #include <M5Unified.h>
+#include <esp_heap_caps.h>
 
 #include "app_config.hpp"
 #include "domain/edh_life_change.hpp"
@@ -20,8 +21,58 @@
 #include "domain/edh_life_service.hpp"
 #include "app/edh_screen_state.hpp"
 #include "input/edh_touch_zone.hpp"
+#include "input/touch_zone.hpp"  // angleDegrees() for EDH start angle validation
 
 namespace counter::app {
+
+// ============================================================
+// 診断用シリアルログ。
+// 実機デバッグが終わったら EDH_DEBUG_LOG を 0 に変更して無効化する。
+// ログ書式は FaB 版 (APP_DEBUG_LOG) と同じ機械解析向けフォーマット:
+//   EDH_LOOP,<nowMs>                  — update() 冒頭（ループ生存確認）
+//   EDH_BTN,<EventName>,<Screen>      — ボタンイベント発火時
+//   EDH_SCREEN,<Old>,<New>            — 画面遷移時
+//   EDH_TDOWN,zone=<inner/ring>,sector=<n>,r=<radius> — タッチダウン位置
+//   EDH_TUP,sector=<n>,moved=<px>,elapsed=<ms>,isTap=<0/1> — タッチアップ判定
+//   EDH_TAP,sector=<n>,cmdViewPlayer=<n>,selectedSource=<n> — タップ成立
+//   EDH_VIEW,player=<n>,cmdViewPlayer=<n>,selectedSource=<n> — ビュー状態遷移
+//   EDH_SRC,player=<n>,source=<n>     — 被弾元選択
+//   EDH_CMDSLIDE,player=<n>,source=<n>,steps=<n>,applied=<0/1> — スライド確定
+//   EDH_CMDAPPLY,player=<n>,source=<n>,delta=<n>,before=<n>,after=<n>,life=<n>
+// ============================================================
+#ifndef EDH_DEBUG_LOG
+#define EDH_DEBUG_LOG 1
+#endif
+
+#if EDH_DEBUG_LOG
+namespace {
+
+const char* edhButtonEventName(input::ButtonEvent e) {
+    switch (e) {
+    case input::ButtonEvent::None:                return "None";
+    case input::ButtonEvent::UndoRequested:       return "Undo";
+    case input::ButtonEvent::LockToggleRequested: return "LockToggle";
+    case input::ButtonEvent::MenuRequested:       return "Menu";
+    case input::ButtonEvent::ALongPressed:        return "ALong";
+    case input::ButtonEvent::BLongPressed:        return "BLong";
+    }
+    return "?";
+}
+
+const char* edhScreenName(edh::app::Screen s) {
+    switch (s) {
+    case edh::app::Screen::Setup:       return "Setup";
+    case edh::app::Screen::Active:      return "Active";
+    case edh::app::Screen::Menu:        return "Menu";
+    case edh::app::Screen::History:     return "History";
+    case edh::app::Screen::About:       return "About";
+    case edh::app::Screen::Sensitivity: return "Sensitivity";
+    }
+    return "?";
+}
+
+}  // namespace
+#endif
 
 // ============================================================
 // 振動パターンの持続時間 (ms)
@@ -48,10 +99,61 @@ constexpr uint32_t kVibTapMs         = 20;  // 内側タップのフィードバ
 // ============================================================
 
 void EdhAppController::begin() {
+    // ================================================================
+    // 二分法の実験ビルド (EDH_BISECT)
+    //
+    // -DEDH_BISECT=1: renderer_.begin() を呼ばない。update() は生入力ログのみ。
+    //                 → 入力が生きれば renderer_.begin() が原因。
+    // -DEDH_BISECT=2: renderer_.begin() は呼ぶ。update() は生入力ログのみ。
+    //                 → 入力が生きれば update() 内の処理が原因。
+    // -DEDH_BISECT=3 または未定義: 通常動作。
+    // ================================================================
+
+#if EDH_DEBUG_LOG
+    Serial.printf("EDH_HEAP,phase=pre_renderer,"
+                  "freeHeap=%lu,intFree=%lu,intMaxBlock=%lu,freePsram=%lu\n",
+                  static_cast<unsigned long>(ESP.getFreeHeap()),
+                  static_cast<unsigned long>(
+                      heap_caps_get_free_size(MALLOC_CAP_INTERNAL)),
+                  static_cast<unsigned long>(
+                      heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL)),
+                  static_cast<unsigned long>(ESP.getFreePsram()));
+#endif
+
+#if !defined(EDH_BISECT) || EDH_BISECT >= 2
     renderer_.begin();
+#else
+    Serial.println("EDH_BISECT=1: renderer_.begin() skipped");
+#endif
+
+#if EDH_DEBUG_LOG
+    Serial.printf("EDH_HEAP,phase=post_renderer,"
+                  "freeHeap=%lu,intFree=%lu,intMaxBlock=%lu,freePsram=%lu\n",
+                  static_cast<unsigned long>(ESP.getFreeHeap()),
+                  static_cast<unsigned long>(
+                      heap_caps_get_free_size(MALLOC_CAP_INTERNAL)),
+                  static_cast<unsigned long>(
+                      heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL)),
+                  static_cast<unsigned long>(ESP.getFreePsram()));
+#endif
+
     haptics_.begin();
     storage_.begin();
 
+#if EDH_DEBUG_LOG
+    Serial.printf("EDH_HEAP,phase=post_init,"
+                  "freeHeap=%lu,intFree=%lu,intMaxBlock=%lu,freePsram=%lu,"
+                  "board=%d\n",
+                  static_cast<unsigned long>(ESP.getFreeHeap()),
+                  static_cast<unsigned long>(
+                      heap_caps_get_free_size(MALLOC_CAP_INTERNAL)),
+                  static_cast<unsigned long>(
+                      heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL)),
+                  static_cast<unsigned long>(ESP.getFreePsram()),
+                  static_cast<int>(M5.getBoard()));
+#endif
+
+#if !defined(EDH_BISECT) || EDH_BISECT >= 3
     // NVS から感度設定を復元する
     {
         const uint8_t sensIdx = storage_.loadedSensitivity();
@@ -75,6 +177,9 @@ void EdhAppController::begin() {
     // 初回起動: Setup 画面から開始する
     screenState_.reset();
     renderer_.drawSetup(screenState_);
+#else
+    Serial.printf("EDH_BISECT=%d: begin() setup/draw skipped\n", EDH_BISECT);
+#endif
 }
 
 // ============================================================
@@ -83,17 +188,65 @@ void EdhAppController::begin() {
 
 void EdhAppController::update(uint32_t nowMs) {
     // ================================================================
+    // 生入力ログ（全 BISECT レベルで出力する）
+    // ================================================================
+#if EDH_DEBUG_LOG
+    static uint32_t lastRawLogMs = 0;
+    if (nowMs - lastRawLogMs >= 1000) {
+        const bool rawA = M5.BtnA.isPressed();
+        const bool rawB = M5.BtnB.isPressed();
+        const auto tc = M5.Touch.getCount();
+        int16_t tx = -1, ty = -1;
+        if (tc > 0) {
+            const auto td = M5.Touch.getDetail(0);
+            if (td.isPressed()) { tx = td.x; ty = td.y; }
+        }
+        Serial.printf("EDH_RAW,btnA=%d,btnB=%d,touch=%d,x=%d,y=%d,"
+                      "intFree=%lu,ms=%lu\n",
+                      rawA, rawB, tc, tx, ty,
+                      static_cast<unsigned long>(
+                          heap_caps_get_free_size(MALLOC_CAP_INTERNAL)),
+                      static_cast<unsigned long>(nowMs));
+        lastRawLogMs = nowMs;
+    }
+#endif
+
+    // ================================================================
+    // 二分法: BISECT=1,2 では生入力ログだけ出して即 return
+    // ================================================================
+#if defined(EDH_BISECT) && EDH_BISECT <= 2
+    return;
+#endif
+
+    // ================================================================
     // 0. 物理ボタンの処理
     // ================================================================
     const bool aPressed = M5.BtnA.isPressed();
     const bool bPressed = M5.BtnB.isPressed();
     const auto buttonEvent = buttonInput_.update(aPressed, bPressed, nowMs);
 
+#if EDH_DEBUG_LOG
+    const auto screenBeforeBtn = screenState_.screen();
+    if (buttonEvent != input::ButtonEvent::None) {
+        Serial.printf("EDH_BTN,%s,%s\n",
+                      edhButtonEventName(buttonEvent),
+                      edhScreenName(screenBeforeBtn));
+    }
+#endif
+
     if (buttonEvent != input::ButtonEvent::None) {
         handleButtonEvent(buttonEvent, nowMs);
     }
 
     const auto currentScreen = screenState_.screen();
+
+#if EDH_DEBUG_LOG
+    if (currentScreen != screenBeforeBtn) {
+        Serial.printf("EDH_SCREEN,%s,%s\n",
+                      edhScreenName(screenBeforeBtn),
+                      edhScreenName(currentScreen));
+    }
+#endif
 
     // ================================================================
     // 0.5. 無操作タイムアウトの確認（毎ループ）
@@ -146,14 +299,70 @@ void EdhAppController::update(uint32_t nowMs) {
                     const bool outerRing = edh::isOnOuterRing(x, y);
                     const bool innerZone = edh::isInInnerZone(x, y);
 
+                    // 半径を計算してログに出力する
+                    const float rdx = static_cast<float>(x) - config::kCenterX;
+                    const float rdy = static_cast<float>(y) - config::kCenterY;
+                    const float radius = std::sqrt(rdx * rdx + rdy * rdy);
+                    const uint8_t sector = edh::selectSector(x, y);
+
+#if EDH_DEBUG_LOG
+                    Serial.printf("EDH_TDOWN,zone=%s,sector=%u,r=%d\n",
+                                  outerRing ? "ring" : "inner",
+                                  static_cast<unsigned>(sector),
+                                  static_cast<int>(radius));
+#endif
+
                     if (outerRing) {
                         // 外周リング: GestureDetector にタッチを渡す
-                        slidePlayerIndex_ = edh::selectSector(x, y);
-                        gesture_.onTouchDown(x, y, nowMs);
+                        slidePlayerIndex_ = sector;
 
-                        if (gesture_.state() == input::GestureState::Candidate) {
-                            haptics_.beginGesture();
-                            haptics_.pulse(kVibStartMs);
+                        // CmdDamageView が開いている場合、スライド開始扇形で
+                        // 被弾元を決定する。開いているプレイヤー以外の扇形から
+                        // スライドを開始すると、その扇形が被弾元になる。
+                        {
+                            const uint8_t cmdVP =
+                                screenState_.cmdDamageViewPlayer();
+                            if (cmdVP != edh::kSourceNone &&
+                                sector != cmdVP) {
+                                screenState_.selectSource(sector, nowMs);
+#if EDH_DEBUG_LOG
+                                Serial.printf(
+                                    "EDH_SRC,player=%u,source=%u\n",
+                                    static_cast<unsigned>(cmdVP),
+                                    static_cast<unsigned>(sector));
+#endif
+                            }
+                        }
+
+                        // EDH 用の開始角度判定:
+                        // 扇形境界（対角線）付近の不感帯をチェックする。
+                        // FaB 版の isValidStartAngle() は 0°/180° 付近を禁止
+                        // するが、EDH では代わりに 45°/135°/225°/315° 付近を
+                        // 禁止する。
+                        const float startAngle = input::angleDegrees(x, y);
+                        if (!edh::isValidStartAngleEdh(startAngle)) {
+                            // 不感帯内: 開始を拒否し、警告振動を鳴らす
+                            haptics_.pulse(kVibRejectMs);
+                            innerTouchStarted_ = false;
+                        } else {
+                            // P2/P4 セクターでは GestureDetector 内部の
+                            // FaB 用禁止領域を迂回するため座標を 90° 回転させる。
+                            // 回転は角度差分を保存するためライフ計算に影響しない。
+                            rotatingCoords_ = edh::needsCoordinateRotation(
+                                slidePlayerIndex_);
+
+                            int16_t gx = x, gy = y;
+                            if (rotatingCoords_) {
+                                edh::rotateCCW90(x, y, gx, gy);
+                            }
+
+                            gesture_.onTouchDown(gx, gy, nowMs);
+
+                            if (gesture_.state() ==
+                                input::GestureState::Candidate) {
+                                haptics_.beginGesture();
+                                haptics_.pulse(kVibStartMs);
+                            }
                         }
 
                         innerTouchStarted_ = false;
@@ -190,7 +399,13 @@ void EdhAppController::update(uint32_t nowMs) {
                     prevTouchX_ = x;
                     prevTouchY_ = y;
                 } else if (x != prevTouchX_ || y != prevTouchY_) {
-                    gesture_.onTouchMove(x, y, nowMs);
+                    // P2/P4 の座標回転を onTouchMove にも一貫して適用する。
+                    // onTouchDown と同じ回転を適用しないと角度差分が狂う。
+                    int16_t gx = x, gy = y;
+                    if (rotatingCoords_) {
+                        edh::rotateCCW90(x, y, gx, gy);
+                    }
+                    gesture_.onTouchMove(gx, gy, nowMs);
                     prevTouchX_ = x;
                     prevTouchY_ = y;
                 }
@@ -241,17 +456,21 @@ void EdhAppController::update(uint32_t nowMs) {
                 // Active: どのプレイヤーのプレビューかを決定する
                 const uint8_t pi = slidePlayerIndex_;
 
-                // 統率者ダメージビューで自扇形からのスライドの場合
+                // 統率者ダメージスライドの判定:
+                // CmdDamageView が開いていて、かつスライドがビューを
+                // 開いているプレイヤー**以外**の扇形から始まった場合。
+                // 被弾元はスライド開始扇形 (pi) で自動決定される。
                 const uint8_t cmdViewPlayer = screenState_.cmdDamageViewPlayer();
                 const bool isCmdDmgSlide =
                     (cmdViewPlayer != edh::kSourceNone) &&
-                    (pi == cmdViewPlayer) &&
-                    (screenState_.selectedSource() != edh::kSourceNone);
+                    (pi != cmdViewPlayer);
 
                 if (isCmdDmgSlide) {
-                    // 統率者ダメージのプレビュー
+                    // 統率者ダメージのプレビュー:
+                    // ビューを開いているプレイヤー (cmdViewPlayer) の扇形を
+                    // 再描画して、pi からのダメージ増減を表示する。
                     renderer_.drawPlayerSector(
-                        state_, screenState_, pi,
+                        state_, screenState_, cmdViewPlayer,
                         currentPreview.deltaLife, true);
                 } else {
                     // 通常ライフのプレビュー
@@ -264,8 +483,22 @@ void EdhAppController::update(uint32_t nowMs) {
         } else if (prevPreview_.active && !willCommit) {
             // プレビュー終了（キャンセル等）: 元の表示に戻す
             if (currentScreen == edh::app::Screen::Active) {
-                renderer_.drawPlayerSector(
-                    state_, screenState_, slidePlayerIndex_, 0, false);
+                const uint8_t cmdViewPlayer =
+                    screenState_.cmdDamageViewPlayer();
+                const bool wasCmdDmg =
+                    (cmdViewPlayer != edh::kSourceNone) &&
+                    (slidePlayerIndex_ != cmdViewPlayer);
+
+                if (wasCmdDmg) {
+                    // 統率者ダメージプレビューのキャンセル:
+                    // ビュー表示プレイヤーの扇形を元に戻す
+                    renderer_.drawPlayerSector(
+                        state_, screenState_, cmdViewPlayer, 0, false);
+                    screenState_.clearSource();
+                } else {
+                    renderer_.drawPlayerSector(
+                        state_, screenState_, slidePlayerIndex_, 0, false);
+                }
             }
         }
     }
@@ -289,26 +522,63 @@ void EdhAppController::update(uint32_t nowMs) {
             // Active: ライフ変更 or 統率者ダメージの確定
             const uint8_t pi = slidePlayerIndex_;
             const uint8_t cmdViewPlayer = screenState_.cmdDamageViewPlayer();
+
+            // 統率者ダメージスライドの判定:
+            // CmdDamageView が開いていて、スライドが開いているプレイヤー
+            // **以外**の扇形から始まった場合。被弾元 = pi（スライド開始扇形）。
             const bool isCmdDmgSlide =
                 (cmdViewPlayer != edh::kSourceNone) &&
-                (pi == cmdViewPlayer) &&
-                (screenState_.selectedSource() != edh::kSourceNone);
+                (pi != cmdViewPlayer);
+
+#if EDH_DEBUG_LOG
+            Serial.printf("EDH_CMDSLIDE,player=%u,source=%u,steps=%d,applied=%d\n",
+                          static_cast<unsigned>(
+                              isCmdDmgSlide ? cmdViewPlayer : pi),
+                          static_cast<unsigned>(
+                              isCmdDmgSlide ? pi : edh::kSourceNone),
+                          static_cast<int>(result.deltaLife),
+                          isCmdDmgSlide ? 1 : 0);
+#endif
 
             if (isCmdDmgSlide) {
                 // 統率者ダメージ操作（ライフ連動あり）
-                const uint8_t srcIdx = screenState_.selectedSource();
+                // 対象プレイヤー = cmdViewPlayer（ビューを開いている人）
+                // 被弾元 = pi（スライド開始扇形のプレイヤー）
+                const uint8_t targetPlayer = cmdViewPlayer;
+                const uint8_t srcIdx = pi;
+                const uint8_t dmgBefore =
+                    state_.players[targetPlayer].commanderDamageFrom[srcIdx];
                 edh::applyCommanderDamage(
-                    state_, pi, srcIdx,
+                    state_, targetPlayer, srcIdx,
                     static_cast<int16_t>(result.deltaLife), nowMs);
+                const uint8_t dmgAfter =
+                    state_.players[targetPlayer].commanderDamageFrom[srcIdx];
+
+#if EDH_DEBUG_LOG
+                Serial.printf("EDH_CMDAPPLY,player=%u,source=%u,delta=%d,"
+                              "before=%u,after=%u,life=%u\n",
+                              static_cast<unsigned>(targetPlayer),
+                              static_cast<unsigned>(srcIdx),
+                              static_cast<int>(result.deltaLife),
+                              static_cast<unsigned>(dmgBefore),
+                              static_cast<unsigned>(dmgAfter),
+                              static_cast<unsigned>(
+                                  state_.players[targetPlayer].life));
+#endif
 
                 // 統率者ダメージ 21 到達チェック
-                if (state_.players[pi].commanderDamageFrom[srcIdx] >= 21) {
+                if (dmgAfter >= 21) {
                     haptics_.pulse(kVibCmdDmg21Ms);
-                } else if (state_.players[pi].life == 0) {
+                } else if (state_.players[targetPlayer].life == 0) {
                     haptics_.pulse(kVibLifeZeroMs);
                 } else {
                     haptics_.pulse(kVibConfirmMs);
                 }
+
+                // ビューを開いているプレイヤーの扇形を再描画する
+                // （統率者ダメージ一覧の数値が変化するため）
+                renderer_.drawPlayerSector(
+                    state_, screenState_, targetPlayer, 0, false);
             } else {
                 // 通常ライフ操作
                 edh::applyLifeChange(
@@ -320,10 +590,11 @@ void EdhAppController::update(uint32_t nowMs) {
                 } else {
                     haptics_.pulse(kVibConfirmMs);
                 }
-            }
 
-            // 扇形を再描画する
-            renderer_.drawPlayerSector(state_, screenState_, pi, 0, false);
+                // スライド対象プレイヤーの扇形を再描画する
+                renderer_.drawPlayerSector(
+                    state_, screenState_, pi, 0, false);
+            }
 
             // NVS に永続化する
             storage_.save(state_);
@@ -419,8 +690,9 @@ void EdhAppController::handleButtonEvent(input::ButtonEvent event,
             break;
         }
         case input::ButtonEvent::MenuRequested: {
+            // A+B 長押し: メニューを開く（FaB 版と同じ）
             cancelOngoingGesture();
-            const auto action = screenState_.onLongPressB();
+            const auto action = screenState_.onCloseMenu();
             executeScreenAction(action);
             break;
         }
@@ -618,18 +890,46 @@ bool EdhAppController::handleInnerTap(int16_t x, int16_t y, uint32_t nowMs) {
         edh::kTapMaxMovePx;
     const uint32_t elapsed = nowMs - tapStartMs_;
 
-    if (moveSq > maxMoveSq || elapsed > edh::kTapMaxDurationMs) {
+    // タッチアップのログ: 移動量・経過時間・判定結果を出力する。
+    // handleInnerTap が呼ばれるのは内側領域でタッチが開始された場合のみ。
+    const uint8_t upSector = edh::selectSector(tapStartX_, tapStartY_);
+    const bool isTap = (moveSq <= maxMoveSq && elapsed <= edh::kTapMaxDurationMs);
+
+#if EDH_DEBUG_LOG
+    // moveSq の平方根を整数で近似する（ログの可読性のため）
+    int32_t movePx = 0;
+    {
+        int32_t s = moveSq;
+        int32_t r = 0;
+        while (r * r < s) ++r;
+        movePx = r;
+    }
+    Serial.printf("EDH_TUP,sector=%u,moved=%d,elapsed=%lu,isTap=%d\n",
+                  static_cast<unsigned>(upSector),
+                  static_cast<int>(movePx),
+                  static_cast<unsigned long>(elapsed),
+                  isTap ? 1 : 0);
+#endif
+
+    if (!isTap) {
         return false;  // タップではない（ドラッグ等）
     }
 
     // タップが成立: タッチ開始位置の扇形を判定する
-    const uint8_t tappedSector = edh::selectSector(tapStartX_, tapStartY_);
+    const uint8_t tappedSector = upSector;
 
     // EdhScreenState の onInnerTap を呼ぶ
     // onInnerTap は排他制御のみを行う。
     // 振り分けはアプリ層の責務（仕様書の申し送り事項）。
 
     const uint8_t cmdViewPlayer = screenState_.cmdDamageViewPlayer();
+
+#if EDH_DEBUG_LOG
+    Serial.printf("EDH_TAP,sector=%u,cmdViewPlayer=%u,selectedSource=%u\n",
+                  static_cast<unsigned>(tappedSector),
+                  static_cast<unsigned>(cmdViewPlayer),
+                  static_cast<unsigned>(screenState_.selectedSource()));
+#endif
 
     if (cmdViewPlayer == edh::kSourceNone) {
         // 誰も CmdDamageView を開いていない → 自分の扇形をトグル
@@ -640,20 +940,40 @@ bool EdhAppController::handleInnerTap(int16_t x, int16_t y, uint32_t nowMs) {
         screenState_.onInnerTap(tappedSector, nowMs);
         haptics_.pulse(kVibTapMs);
     } else {
-        // 他扇形をタップ → 被弾元選択
-        screenState_.selectSource(tappedSector, nowMs);
-        haptics_.pulse(kVibTapMs);
+        // 他扇形をタップ → 被弾元はスライドで決まるため、タップは無視する
+#if EDH_DEBUG_LOG
+        Serial.printf("EDH_TAP_IGNORE,sector=%u,cmdViewPlayer=%u\n",
+                      static_cast<unsigned>(tappedSector),
+                      static_cast<unsigned>(cmdViewPlayer));
+#endif
+        return true;  // タップ自体は成立（ジェスチャーには渡さない）
     }
+
+    // ビュー状態遷移のログ
+#if EDH_DEBUG_LOG
+    Serial.printf("EDH_VIEW,player=%u,cmdViewPlayer=%u,selectedSource=%u\n",
+                  static_cast<unsigned>(tappedSector),
+                  static_cast<unsigned>(screenState_.cmdDamageViewPlayer()),
+                  static_cast<unsigned>(screenState_.selectedSource()));
+#endif
 
     // タップされた扇形を再描画する
     renderer_.drawPlayerSector(state_, screenState_, tappedSector, 0, false);
 
     // CmdDamageView が開いている場合、そのプレイヤーの扇形も再描画する
     // （被弾元選択の反映のため）
-    if (cmdViewPlayer != edh::kSourceNone && tappedSector != cmdViewPlayer) {
+    const uint8_t newCmdViewPlayer = screenState_.cmdDamageViewPlayer();
+    if (newCmdViewPlayer != edh::kSourceNone &&
+        tappedSector != newCmdViewPlayer) {
         renderer_.drawPlayerSector(
-            state_, screenState_, cmdViewPlayer, 0, false);
+            state_, screenState_, newCmdViewPlayer, 0, false);
     }
+
+    // handleInnerTap が必要な扇形をすべて部分再描画済みのため、
+    // onInnerTap/selectSource が立てた dirty フラグを消費する。
+    // これにより update() の step 7 で冗長な drawAll() が走るのを防ぎ、
+    // 全画面再描画 (~100-200ms) のブロックで次のタッチを取りこぼす問題を解消する。
+    screenState_.consumeDirty();
 
     return true;
 }
