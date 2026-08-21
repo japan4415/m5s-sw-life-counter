@@ -19,7 +19,11 @@ struct MatchState {
     bool     active;
     bool     touchLocked;
     uint32_t nextSequence;
-    counter::domain::RingBuffer<LifeChange, 64> history;
+    // 履歴容量 16 件。FaB 版 (64 件) より小さいのは、EDH の LifeChange が
+    // 統率者ダメージフィールドを含み 1 件あたりのサイズが大きいため。
+    // NVS パーティション (20KB) に 16 スロット分を収めるための制約。
+    // 16 件 = 4 人 × 4 ラウンド分のUndoに相当し、実用上十分。
+    counter::domain::RingBuffer<LifeChange, 16> history;
 };
 
 }  // namespace counter::edh

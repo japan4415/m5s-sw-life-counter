@@ -56,4 +56,56 @@ bool isInCancelZone(int16_t x, int16_t y) {
     return radius < counter::config::kCancelRadius;
 }
 
+// ============================================================
+// EDH 用のスライド開始角度判定
+// ============================================================
+
+bool isValidStartAngleEdh(float angleDeg) {
+    // EDH の 4 扇形は対角線（45°/135°/225°/315°）で区切られる。
+    // 対角線付近からスライドを開始すると、どの扇形を操作しようとしているか
+    // 曖昧なため、境界 ± kEdhDeadZoneHalfWidthDeg の不感帯を設ける。
+    //
+    // 不感帯の角度範囲（kEdhDeadZoneHalfWidthDeg = 15° の場合）:
+    //   30°〜 60° (45° ± 15°)   — P1/P2 境界
+    //  120°〜150° (135° ± 15°)  — P2/P3 境界
+    //  210°〜240° (225° ± 15°)  — P3/P4 境界
+    //  300°〜330° (315° ± 15°)  — P4/P1 境界
+    //
+    // [0, 360) に正規化された angleDeg を前提とする。
+
+    // 4 つの境界角度に対してチェックする
+    constexpr float kBoundaryAngles[] = {45.0f, 135.0f, 225.0f, 315.0f};
+
+    for (float boundary : kBoundaryAngles) {
+        float diff = angleDeg - boundary;
+        // [-180, 180) に正規化
+        if (diff > 180.0f) diff -= 360.0f;
+        if (diff <= -180.0f) diff += 360.0f;
+
+        if (std::abs(diff) < kEdhDeadZoneHalfWidthDeg) {
+            return false;  // 不感帯内 → 開始を拒否する
+        }
+    }
+
+    return true;  // いずれの不感帯にも該当しない → 開始を許可する
+}
+
+// ============================================================
+// 座標回転ヘルパー
+// ============================================================
+
+void rotateCCW90(int16_t x, int16_t y, int16_t& outX, int16_t& outY) {
+    // 中心 (234, 234) を軸に 90° 反時計回りに回転する。
+    // 回転行列: [cos90, sin90; -sin90, cos90] = [0, 1; -1, 0]
+    //   dx' =  dy
+    //   dy' = -dx
+    // 結果: outX = center + dy, outY = center - dx
+    const int16_t cx = 234;
+    const int16_t cy = 234;
+    const int16_t dx = x - cx;
+    const int16_t dy = y - cy;
+    outX = static_cast<int16_t>(cx + dy);
+    outY = static_cast<int16_t>(cy - dx);
+}
+
 }  // namespace counter::edh

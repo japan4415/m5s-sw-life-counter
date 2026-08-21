@@ -141,6 +141,156 @@ void test_cancel_zone_boundary(void) {
 }
 
 // ========================================================================
+// タップ判定しきい値の定数テスト
+// ========================================================================
+
+// kTapMaxDurationMs はタッチセンサの最大欠測 (270ms) を考慮して
+// 600ms に設定されている。300ms では欠測と重なりタップが拒否されうる。
+void test_tap_max_duration_accommodates_dropout(void) {
+    // 270ms の欠測 + 200ms の物理タップ = 470ms のケースを通すには
+    // 閾値が少なくとも 470ms 以上でなければならない
+    TEST_ASSERT_TRUE(kTapMaxDurationMs >= 470);
+    // かつ長押しと誤判定しないよう 1000ms 未満であるべき
+    TEST_ASSERT_TRUE(kTapMaxDurationMs < 1000);
+}
+
+void test_tap_max_duration_is_600(void) {
+    TEST_ASSERT_EQUAL_UINT32(600, kTapMaxDurationMs);
+}
+
+void test_tap_max_move_is_20(void) {
+    TEST_ASSERT_EQUAL_INT16(20, kTapMaxMovePx);
+}
+
+// ========================================================================
+// EDH 用スライド開始角度判定
+// ========================================================================
+
+// P1(上) 中心角 270° → 許可
+void test_start_angle_p1_center(void) {
+    TEST_ASSERT_TRUE(isValidStartAngleEdh(270.0f));
+}
+
+// P2(右) 中心角 0° → 許可
+void test_start_angle_p2_center(void) {
+    TEST_ASSERT_TRUE(isValidStartAngleEdh(0.0f));
+}
+
+// P3(下) 中心角 90° → 許可
+void test_start_angle_p3_center(void) {
+    TEST_ASSERT_TRUE(isValidStartAngleEdh(90.0f));
+}
+
+// P4(左) 中心角 180° → 許可
+void test_start_angle_p4_center(void) {
+    TEST_ASSERT_TRUE(isValidStartAngleEdh(180.0f));
+}
+
+// P1/P2 境界 45° → 不感帯で拒否
+void test_start_angle_boundary_45(void) {
+    TEST_ASSERT_FALSE(isValidStartAngleEdh(45.0f));
+}
+
+// P2/P3 境界 135° → 不感帯で拒否
+void test_start_angle_boundary_135(void) {
+    TEST_ASSERT_FALSE(isValidStartAngleEdh(135.0f));
+}
+
+// P3/P4 境界 225° → 不感帯で拒否
+void test_start_angle_boundary_225(void) {
+    TEST_ASSERT_FALSE(isValidStartAngleEdh(225.0f));
+}
+
+// P4/P1 境界 315° → 不感帯で拒否
+void test_start_angle_boundary_315(void) {
+    TEST_ASSERT_FALSE(isValidStartAngleEdh(315.0f));
+}
+
+// 不感帯の端: 45° - 15° = 30° → ちょうど境界（許可側）
+void test_start_angle_deadzone_edge_low(void) {
+    // kEdhDeadZoneHalfWidthDeg = 15° → 30° は abs(30-45) = 15 で
+    // 不感帯の外（<15 でなく ==15 は許可）
+    TEST_ASSERT_TRUE(isValidStartAngleEdh(30.0f));
+}
+
+// 不感帯の内側: 44° → abs(44-45) = 1 < 15 → 拒否
+void test_start_angle_inside_deadzone(void) {
+    TEST_ASSERT_FALSE(isValidStartAngleEdh(44.0f));
+}
+
+// P2 領域で FaB が拒否する角度: 5° → EDH では許可
+void test_start_angle_fab_rejected_but_edh_allows(void) {
+    // FaB は 0° 付近を禁止するが、EDH では P2 の中心付近なので許可
+    TEST_ASSERT_TRUE(isValidStartAngleEdh(5.0f));
+}
+
+// P4 領域で FaB が拒否する角度: 175° → EDH では許可
+void test_start_angle_fab_rejected_but_edh_allows_p4(void) {
+    TEST_ASSERT_TRUE(isValidStartAngleEdh(175.0f));
+}
+
+// 359° → P2 の中心付近、許可
+void test_start_angle_near_360(void) {
+    TEST_ASSERT_TRUE(isValidStartAngleEdh(359.0f));
+}
+
+// ========================================================================
+// 座標回転ヘルパー
+// ========================================================================
+
+// 真右 (468, 234) → 90° CCW → 真上 (234, 0)
+void test_rotate_right_to_top(void) {
+    int16_t outX, outY;
+    rotateCCW90(468, 234, outX, outY);
+    TEST_ASSERT_EQUAL_INT16(234, outX);
+    TEST_ASSERT_EQUAL_INT16(0, outY);
+}
+
+// 真左 (0, 234) → 90° CCW → 真下 (234, 468)
+void test_rotate_left_to_bottom(void) {
+    int16_t outX, outY;
+    rotateCCW90(0, 234, outX, outY);
+    TEST_ASSERT_EQUAL_INT16(234, outX);
+    TEST_ASSERT_EQUAL_INT16(468, outY);
+}
+
+// 中心 (234, 234) → 回転しても中心のまま
+void test_rotate_center_stays(void) {
+    int16_t outX, outY;
+    rotateCCW90(234, 234, outX, outY);
+    TEST_ASSERT_EQUAL_INT16(234, outX);
+    TEST_ASSERT_EQUAL_INT16(234, outY);
+}
+
+// 真上 (234, 0) → 90° CCW → 真左 (0, 234)
+void test_rotate_top_to_left(void) {
+    int16_t outX, outY;
+    rotateCCW90(234, 0, outX, outY);
+    TEST_ASSERT_EQUAL_INT16(0, outX);
+    TEST_ASSERT_EQUAL_INT16(234, outY);
+}
+
+// ========================================================================
+// needsCoordinateRotation
+// ========================================================================
+
+void test_needs_rotation_p1_no(void) {
+    TEST_ASSERT_FALSE(needsCoordinateRotation(0));
+}
+
+void test_needs_rotation_p2_yes(void) {
+    TEST_ASSERT_TRUE(needsCoordinateRotation(1));
+}
+
+void test_needs_rotation_p3_no(void) {
+    TEST_ASSERT_FALSE(needsCoordinateRotation(2));
+}
+
+void test_needs_rotation_p4_yes(void) {
+    TEST_ASSERT_TRUE(needsCoordinateRotation(3));
+}
+
+// ========================================================================
 
 int main(int argc, char** argv) {
     UNITY_BEGIN();
@@ -167,6 +317,38 @@ int main(int argc, char** argv) {
     RUN_TEST(test_outer_ring_inside);
     RUN_TEST(test_cancel_zone);
     RUN_TEST(test_cancel_zone_boundary);
+
+    // タップしきい値
+    RUN_TEST(test_tap_max_duration_accommodates_dropout);
+    RUN_TEST(test_tap_max_duration_is_600);
+    RUN_TEST(test_tap_max_move_is_20);
+
+    // EDH スライド開始角度判定
+    RUN_TEST(test_start_angle_p1_center);
+    RUN_TEST(test_start_angle_p2_center);
+    RUN_TEST(test_start_angle_p3_center);
+    RUN_TEST(test_start_angle_p4_center);
+    RUN_TEST(test_start_angle_boundary_45);
+    RUN_TEST(test_start_angle_boundary_135);
+    RUN_TEST(test_start_angle_boundary_225);
+    RUN_TEST(test_start_angle_boundary_315);
+    RUN_TEST(test_start_angle_deadzone_edge_low);
+    RUN_TEST(test_start_angle_inside_deadzone);
+    RUN_TEST(test_start_angle_fab_rejected_but_edh_allows);
+    RUN_TEST(test_start_angle_fab_rejected_but_edh_allows_p4);
+    RUN_TEST(test_start_angle_near_360);
+
+    // 座標回転ヘルパー
+    RUN_TEST(test_rotate_right_to_top);
+    RUN_TEST(test_rotate_left_to_bottom);
+    RUN_TEST(test_rotate_center_stays);
+    RUN_TEST(test_rotate_top_to_left);
+
+    // needsCoordinateRotation
+    RUN_TEST(test_needs_rotation_p1_no);
+    RUN_TEST(test_needs_rotation_p2_yes);
+    RUN_TEST(test_needs_rotation_p3_no);
+    RUN_TEST(test_needs_rotation_p4_yes);
 
     return UNITY_END();
 }

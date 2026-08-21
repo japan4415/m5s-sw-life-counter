@@ -3,11 +3,16 @@
 M5Stack StopWatch Dev Kit (ESP32-S3) 上で動作する、Flesh and Blood (FaB) TCG 向け 1 対 1 ライフカウンター。
 円形 AMOLED ディスプレイの外周をスライドしてライフを増減する操作体系を採用し、無線通信を使わない Tournament Mode を標準とする。
 
-同一ハードウェアでゲーム別の複数ファームウェアバリアントを提供する。現行リリース済みの実装は **for FaB** バリアントである。MTG 統率者戦（EDH）向けの **for MTG EDH** バリアントは[実装完了](docs/15-edh-firmware-spec.md)（実機検証待ち・未リリース）。
+同一ハードウェアでゲーム別の複数ファームウェアバリアントを提供する。
+
+| バリアント | バージョン | 状態 |
+|---|---|---|
+| **for FaB** | v1.2.0 | リリース済み |
+| **for MTG EDH** | v0.1.0 | 初版リリース（実機での基本動作は確認済みだが、検証は限定的） |
 
 ## ステータス
 
-**ファームウェア v1.0.0 リリース済み** -- [Web Flasher](https://m5s-sw-life-counter.discord.jp/install) からブラウザ経由でインストールできる。
+**ファームウェア v1.2.0 リリース済み** -- [Web Flasher](https://m5s-sw-life-counter.discord.jp/install) からブラウザ経由でインストールできる。MTG 統率者戦（EDH）向けバリアントも初版 v0.1.0 を同梱している（[仕様](docs/15-edh-firmware-spec.md)）。
 
 ## 主要な特徴
 
@@ -38,7 +43,7 @@ ls /dev/cu.usbmodem*
 # for FaB（既定）
 pio run -t upload -t monitor
 
-# for MTG EDH（実機検証待ち・未リリース）
+# for MTG EDH（初版リリース済み）
 pio run -e m5stack-stopwatch-edh -t upload -t monitor
 ```
 
@@ -70,7 +75,7 @@ pio run -t upload --upload-port /dev/cu.usbmodem<実際のポート番号>
 | [docs/11-testing.md](docs/11-testing.md) | テスト設計 |
 | [docs/12-roadmap.md](docs/12-roadmap.md) | 実装ロードマップ |
 | [docs/13-decisions.md](docs/13-decisions.md) | 技術選定記録と未解決事項 |
-| [docs/15-edh-firmware-spec.md](docs/15-edh-firmware-spec.md) | MTG EDH（統率者戦）ファームウェア仕様（実装完了・実機検証待ち） |
+| [docs/15-edh-firmware-spec.md](docs/15-edh-firmware-spec.md) | MTG EDH（統率者戦）ファームウェア仕様 |
 
 **読み進め方**:
 

@@ -57,12 +57,18 @@ public:
     // CmdDamageView で選択中の被弾元。kSourceNone = 未選択
     uint8_t selectedSource() const;
 
-    // 内側タップ: 対象プレイヤーの扇形がタップされた
+    // 内側タップ: 対象プレイヤーの扇形がタップされた。
+    // CmdDamageView が開いていなければ開く。開いている本人なら閉じる。
+    // 他プレイヤーの扇形へのタップは無視する（被弾元はスライドで決まる）。
     // nowMs はタイムアウト管理用のシステム稼働時間
     void onInnerTap(uint8_t playerIndex, uint32_t nowMs);
 
-    // 被弾元を選択する（CmdDamageView 中に他プレイヤーの扇形をタップ）
+    // 操作中の被弾元を設定する（スライド開始時にアプリ層が呼ぶ）。
+    // CmdDamageView が開いていないとき、または自分自身の場合は無視する。
     void selectSource(uint8_t sourceIndex, uint32_t nowMs);
+
+    // 操作中の被弾元をクリアする（スライド確定・キャンセル後にアプリ層が呼ぶ）。
+    void clearSource();
 
     // 無操作タイムアウトの確認。nowMs が最終操作時刻から閾値を超えたら LifeView へ復帰
     void checkTimeout(uint32_t nowMs);

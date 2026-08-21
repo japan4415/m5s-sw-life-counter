@@ -66,6 +66,12 @@ private:
     // 統率者ダメージビュー中に自扇形から開始したスライドかどうかの判定にも使う。
     uint8_t slidePlayerIndex_ = 0;
 
+    // --- P2/P4 座標回転フラグ ---
+    // GestureDetector 内部の FaB 用 isValidStartAngle() が P2/P4 の開始を
+    // 拒否するため、P2/P4 セクターでは座標を 90° 回転させて渡す。
+    // このフラグが true の間、onTouchMove にも回転座標を渡す。
+    bool rotatingCoords_ = false;
+
     // --- ボタンイベント処理 ---
     void handleButtonEvent(input::ButtonEvent event, uint32_t nowMs);
 
