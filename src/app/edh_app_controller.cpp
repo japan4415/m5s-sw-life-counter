@@ -76,22 +76,13 @@ const char* edhScreenName(edh::app::Screen s) {
 
 // ============================================================
 // 振動パターンの持続時間 (ms)
-// FaB 版と同じパターンを踏襲する。
+// FaB 版と共通のパルス長は lib/counter_core/app_config.hpp の
+// counter::config::kVib* に集約した。ここには EDH 固有のパターンのみ残す。
 // ============================================================
 namespace {
-constexpr uint32_t kVibStartMs    = 30;   // スライド操作開始の合図
-constexpr uint32_t kVibConfirmMs  = 40;   // 指を離して確定
-constexpr uint32_t kVibRejectMs   = 20;   // 開始禁止領域の警告
-constexpr uint32_t kVibLifeZeroMs = 120;  // ライフ 0 到達の強い振動
 constexpr uint32_t kVibCmdDmg21Ms = 120;  // 統率者ダメージ 21 到達の強い振動
 
-constexpr uint32_t kVibUndoSuccessMs = 40;
-constexpr uint32_t kVibUndoFailMs    = 20;
-constexpr uint32_t kVibLockMs        = 80;
-constexpr uint32_t kVibUnlockMs      = 40;
-constexpr uint32_t kVibLockTouchMs   = 20;
-
-constexpr uint32_t kVibTapMs         = 20;  // 内側タップのフィードバック
+constexpr uint32_t kVibTapMs      = 20;   // 内側タップのフィードバック
 }  // namespace
 
 // ============================================================
@@ -283,7 +274,7 @@ void EdhAppController::update(uint32_t nowMs) {
         // タッチロック中: ジェスチャーに渡さず警告振動のみ
         if (currentScreen == edh::app::Screen::Active && state_.touchLocked) {
             if (touching && !prevTouching_) {
-                haptics_.pulse(kVibLockTouchMs);
+                haptics_.pulse(config::kVibLockTouchMs);
                 lockTouchWarned_ = true;
             } else if (!touching && prevTouching_) {
                 lockTouchWarned_ = false;
@@ -342,7 +333,7 @@ void EdhAppController::update(uint32_t nowMs) {
                         const float startAngle = input::angleDegrees(x, y);
                         if (!edh::isValidStartAngleEdh(startAngle)) {
                             // 不感帯内: 開始を拒否し、警告振動を鳴らす
-                            haptics_.pulse(kVibRejectMs);
+                            haptics_.pulse(config::kVibRejectMs);
                             innerTouchStarted_ = false;
                         } else {
                             // P2/P4 セクターでは GestureDetector 内部の
@@ -361,7 +352,7 @@ void EdhAppController::update(uint32_t nowMs) {
                             if (gesture_.state() ==
                                 input::GestureState::Candidate) {
                                 haptics_.beginGesture();
-                                haptics_.pulse(kVibStartMs);
+                                haptics_.pulse(config::kVibStartMs);
                             }
                         }
 
@@ -378,7 +369,7 @@ void EdhAppController::update(uint32_t nowMs) {
                     gesture_.onTouchDown(x, y, nowMs);
                     if (gesture_.state() == input::GestureState::Candidate) {
                         haptics_.beginGesture();
-                        haptics_.pulse(kVibStartMs);
+                        haptics_.pulse(config::kVibStartMs);
                     }
                     innerTouchStarted_ = false;
                 }
@@ -430,7 +421,7 @@ void EdhAppController::update(uint32_t nowMs) {
     // 3. 開始拒否の振動
     // ================================================================
     if (gesture_.consumeRejectedStart()) {
-        haptics_.pulse(kVibRejectMs);
+        haptics_.pulse(config::kVibRejectMs);
     }
 
     // ================================================================
@@ -517,7 +508,7 @@ void EdhAppController::update(uint32_t nowMs) {
             const uint32_t clamped =
                 (newLife < 0) ? 0 : static_cast<uint32_t>(newLife);
             screenState_.setSetupLife(clamped);
-            haptics_.pulse(kVibConfirmMs);
+            haptics_.pulse(config::kVibConfirmMs);
         } else {
             // Active: ライフ変更 or 統率者ダメージの確定
             const uint8_t pi = slidePlayerIndex_;
@@ -570,9 +561,9 @@ void EdhAppController::update(uint32_t nowMs) {
                 if (dmgAfter >= 21) {
                     haptics_.pulse(kVibCmdDmg21Ms);
                 } else if (state_.players[targetPlayer].life == 0) {
-                    haptics_.pulse(kVibLifeZeroMs);
+                    haptics_.pulse(config::kVibLifeZeroMs);
                 } else {
-                    haptics_.pulse(kVibConfirmMs);
+                    haptics_.pulse(config::kVibConfirmMs);
                 }
 
                 // ビューを開いているプレイヤーの扇形を再描画する
@@ -586,9 +577,9 @@ void EdhAppController::update(uint32_t nowMs) {
                     static_cast<int16_t>(result.deltaLife), nowMs);
 
                 if (state_.players[pi].life == 0) {
-                    haptics_.pulse(kVibLifeZeroMs);
+                    haptics_.pulse(config::kVibLifeZeroMs);
                 } else {
-                    haptics_.pulse(kVibConfirmMs);
+                    haptics_.pulse(config::kVibConfirmMs);
                 }
 
                 // スライド対象プレイヤーの扇形を再描画する
@@ -668,12 +659,12 @@ void EdhAppController::handleButtonEvent(input::ButtonEvent event,
         case input::ButtonEvent::UndoRequested: {
             const bool undone = edh::undoLast(state_);
             if (undone) {
-                haptics_.pulse(kVibUndoSuccessMs);
+                haptics_.pulse(config::kVibUndoSuccessMs);
                 // 全プレイヤーの扇形を再描画する（Undo は任意のプレイヤーに影響しうる）
                 renderer_.drawAll(state_, screenState_);
                 storage_.save(state_);
             } else {
-                haptics_.pulse(kVibUndoFailMs);
+                haptics_.pulse(config::kVibUndoFailMs);
             }
             break;
         }
@@ -681,9 +672,9 @@ void EdhAppController::handleButtonEvent(input::ButtonEvent event,
             state_.touchLocked = !state_.touchLocked;
             if (state_.touchLocked) {
                 cancelOngoingGesture();
-                haptics_.pulse(kVibLockMs);
+                haptics_.pulse(config::kVibLockMs);
             } else {
-                haptics_.pulse(kVibUnlockMs);
+                haptics_.pulse(config::kVibUnlockMs);
             }
             renderer_.drawLockState(state_);
             storage_.save(state_);

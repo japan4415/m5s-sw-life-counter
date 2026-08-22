@@ -22,29 +22,7 @@
 
 namespace counter::app {
 
-// ============================================================
-// 振動パターンの持続時間 (ms)
-// docs/05-ui-ux.md の提案値に基づく。
-// 通しでの体感評価はまだ行っていないため、実機テスト後に調整しうる。
-// 将来的には config に集約する可能性がある。
-// ============================================================
-namespace {
-constexpr uint32_t kVibStartMs    = 30;   // スライド操作開始の合図
-constexpr uint32_t kVibConfirmMs  = 40;   // 指を離して確定
-constexpr uint32_t kVibRejectMs   = 20;   // 開始禁止領域の警告（最短パルス）
-constexpr uint32_t kVibLifeZeroMs = 120;  // ライフ 0 到達の強い振動
-
-// --- Phase 2 Wave 1 で追加した振動パターン ---
-// docs/05 は Undo / ロック / ロック解除の振動時間を明記していないが、
-// 「振動の強弱は時間の長短でのみ区別する」(docs/05) の原則に従い、
-// 既存パターン（20ms = 警告/無効、40ms = 確定/成功）との一貫性で設計する。
-constexpr uint32_t kVibUndoSuccessMs = 40;   // Undo 成功: 確定と同等の「操作成立」フィードバック
-constexpr uint32_t kVibUndoFailMs    = 20;   // Undo 失敗（履歴空）: 無効操作の警告（最短パルス）
-constexpr uint32_t kVibLockMs        = 80;   // ロック: 重要な状態変更を長めのパルスで伝達
-constexpr uint32_t kVibUnlockMs      = 40;   // ロック解除: 通常の確定と同等
-constexpr uint32_t kVibLockTouchMs   = 20;   // ロック中タッチ: 最短パルスで「無効」を通知
-
-}  // namespace
+// 振動パターンの持続時間 (ms) は lib/counter_core/app_config.hpp の counter::config::kVib* に集約済み。
 
 // ============================================================
 // 診断用シリアルログ。
@@ -195,7 +173,7 @@ void AppController::update(uint32_t nowMs) {
             // lockTouchWarned_ で連発を防止する。指を離すまでフラグを維持し、
             // 指を離したらリセットして次のタッチで再度鳴るようにする。
             if (touching && !prevTouching_) {
-                haptics_.pulse(kVibLockTouchMs);
+                haptics_.pulse(config::kVibLockTouchMs);
                 lockTouchWarned_ = true;
             } else if (!touching && prevTouching_) {
                 lockTouchWarned_ = false;
@@ -211,7 +189,7 @@ void AppController::update(uint32_t nowMs) {
                 // 外周リング外のタッチや禁止領域のタッチでは振動しない。
                 if (gesture_.state() == input::GestureState::Candidate) {
                     haptics_.beginGesture();
-                    haptics_.pulse(kVibStartMs);
+                    haptics_.pulse(config::kVibStartMs);
                 }
 
                 prevTouchX_ = x;
@@ -244,7 +222,7 @@ void AppController::update(uint32_t nowMs) {
     //    最短時間で他パターンと区別する。
     // ================================================================
     if (gesture_.consumeRejectedStart()) {
-        haptics_.pulse(kVibRejectMs);
+        haptics_.pulse(config::kVibRejectMs);
     }
 
     // ================================================================
@@ -346,7 +324,7 @@ void AppController::update(uint32_t nowMs) {
             const uint32_t clamped =
                 (newLife < 0) ? 0 : static_cast<uint32_t>(newLife);
             screenState_.setSetupLife(result.player, clamped);
-            haptics_.pulse(kVibConfirmMs);
+            haptics_.pulse(config::kVibConfirmMs);
             // dirty フラグが立つので、consumeDirty → drawSetup で反映される
         } else {
             // Active: ドメインにライフ変更を適用する
@@ -357,9 +335,9 @@ void AppController::update(uint32_t nowMs) {
             // それ以外は通常の確定振動 (docs/05: 40ms)。
             const auto& ps = state_.players[domain::toIndex(result.player)];
             if (ps.life == 0) {
-                haptics_.pulse(kVibLifeZeroMs);
+                haptics_.pulse(config::kVibLifeZeroMs);
             } else {
-                haptics_.pulse(kVibConfirmMs);
+                haptics_.pulse(config::kVibConfirmMs);
             }
 
             // 確定後のライフ値を描画する。
@@ -498,7 +476,7 @@ void AppController::handleButtonEvent(input::ButtonEvent event,
             const bool undone = domain::undoLast(state_);
             if (undone) {
                 // 成功: 確定と同等の振動で「操作が成立した」ことを伝える (40ms)
-                haptics_.pulse(kVibUndoSuccessMs);
+                haptics_.pulse(config::kVibUndoSuccessMs);
 
                 // 両プレイヤーの数字を再描画する。
                 // なぜ両方か: undoLast はどちらのプレイヤーのライフを戻したのか
@@ -512,7 +490,7 @@ void AppController::handleButtonEvent(input::ButtonEvent event,
             } else {
                 // 失敗（履歴空）: 最短パルスで「無効操作」を伝える (20ms)。
                 // docs/05 の開始禁止領域と同じパルス長で一貫性を保つ。
-                haptics_.pulse(kVibUndoFailMs);
+                haptics_.pulse(config::kVibUndoFailMs);
             }
             break;
         }
@@ -525,7 +503,7 @@ void AppController::handleButtonEvent(input::ButtonEvent event,
                 // ロック時: 長めのパルスで「重要な状態変更」を伝える (80ms)。
                 // 確定 (40ms) より長く、ライフ 0 (120ms) より短い位置に置くことで
                 // 操作の重要度の階層を維持する。
-                haptics_.pulse(kVibLockMs);
+                haptics_.pulse(config::kVibLockMs);
 
                 // ロックした瞬間に進行中のジェスチャーがあれば破棄する。
                 // なぜ: 途中まで累積した角度が残ると、解除後の最初のタッチで
@@ -534,7 +512,7 @@ void AppController::handleButtonEvent(input::ButtonEvent event,
             } else {
                 // ロック解除: 通常の確定と同等の振動 (40ms)。
                 // ロック (80ms) より短くすることで「解放された」軽さを表現する。
-                haptics_.pulse(kVibUnlockMs);
+                haptics_.pulse(config::kVibUnlockMs);
 
                 // ロック中タッチ警告のフラグをクリアする
                 lockTouchWarned_ = false;
