@@ -242,7 +242,7 @@ LVGL は使用せず、M5GFX で直接描画する。
 |---|---|---|
 | `Haptics` | `haptics_m5.cpp` | 振動モーターの制御。強度 255 固定の PWM パルスを非ブロッキングで再生する。間引きロジックは実装済みだが現在は無効化されている（`kStepThrottleEnabled = false`） |
 | `PowerManager` | `power_m5.cpp` | 画面輝度制御、バッテリー状態取得 |
-| `Storage` | `storage_nvs.cpp` | NVS への永続化。スロットローテーションと CRC 検証 |
+| `Storage` | `nvs_state_store.hpp`（共通テンプレート）+ `storage_nvs.hpp` / `edh_storage_nvs.hpp`（バリアント別ラッパ） | NVS への永続化。スロットローテーションと CRC 検証 |
 | `Display` | M5GFX / M5Canvas | 画面描画と部分矩形転送 |
 
 この抽象化により、ドメインロジック（`domain/`）とジェスチャー検出ロジック（`input/` の純関数部分）を実機なしでテストできる。テスト時には各インターフェースのフェイク実装（呼び出し記録のみを行うスタブ等）を注入する。
