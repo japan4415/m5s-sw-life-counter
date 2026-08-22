@@ -2,7 +2,8 @@
 
 #include <cmath>
 
-#include "app_config.hpp"  // counter::config::kCenterX/Y, kRingInnerRadius, kCancelRadius
+#include "app_config.hpp"  // counter::config::kCenterX/Y（selectSector 用）
+#include "input/touch_zone.hpp"  // radiusFromCenter() / isOnRing() / isInCancelZone()
 
 namespace counter::edh {
 
@@ -39,10 +40,9 @@ uint8_t selectSector(int16_t x, int16_t y) {
 }
 
 bool isOnOuterRing(int16_t x, int16_t y) {
-    const float dx = static_cast<float>(x) - counter::config::kCenterX;
-    const float dy = static_cast<float>(y) - counter::config::kCenterY;
-    const float radius = std::sqrt(dx * dx + dy * dy);
-    return radius >= counter::config::kRingInnerRadius;
+    // 半径計算とリング判定は FaB 版 (lib/counter_core) の共有ヘルパーに委譲する。
+    // 閾値 (kRingInnerRadius) と境界条件は FaB 版と同一である。
+    return input::isOnRing(input::radiusFromCenter(x, y));
 }
 
 bool isInInnerZone(int16_t x, int16_t y) {
@@ -50,10 +50,8 @@ bool isInInnerZone(int16_t x, int16_t y) {
 }
 
 bool isInCancelZone(int16_t x, int16_t y) {
-    const float dx = static_cast<float>(x) - counter::config::kCenterX;
-    const float dy = static_cast<float>(y) - counter::config::kCenterY;
-    const float radius = std::sqrt(dx * dx + dy * dy);
-    return radius < counter::config::kCancelRadius;
+    // キャンセル判定も共有ヘルパーに委譲する。
+    return input::isInCancelZone(input::radiusFromCenter(x, y));
 }
 
 // ============================================================
