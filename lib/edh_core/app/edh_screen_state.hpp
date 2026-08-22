@@ -2,16 +2,23 @@
 
 #include <cstdint>
 
+#include "app/menu_nav.hpp"           // 共通の画面遷移コア + counter::app の共用 enum
 #include "domain/edh_life_change.hpp"  // kPlayerCount, kSourceNone
 
 namespace counter::edh::app {
 
-enum class Screen : uint8_t { Setup, Active, Menu, History, About, Sensitivity };
+// Screen / MenuItem / kMenuItemCount / ScreenAction は counter_core の
+// app/screen_types.hpp に統合された（Phase 3 共通化）。
+// 旧来どおり非修飾名（Screen::Menu 等）でも修飾名
+// （counter::edh::app::ScreenAction 等）でも参照できるよう
+// using 宣言でこの名前空間へ再エクスポートする。
+using counter::app::Screen;
+using counter::app::MenuItem;
+using counter::app::kMenuItemCount;
+using counter::app::ScreenAction;
 
-enum class MenuItem : uint8_t {
-    Resume, History, SetLife, SetSensitivity, Rematch, About
-};
-constexpr uint8_t kMenuItemCount = 6;
+// 共通の画面遷移コアもメンバ宣言（MenuNav nav_;）で使うため再エクスポートする。
+using counter::app::MenuNav;
 
 // 各プレイヤーのビュー状態
 enum class PlayerView : uint8_t {
@@ -19,15 +26,13 @@ enum class PlayerView : uint8_t {
     CmdDamageView,  // 統率者ダメージ一覧表示
 };
 
-// 画面側では実行できず、アプリ層に実行させたい動作。
-enum class ScreenAction : uint8_t {
-    None,
-    StartMatch,    // Setup で確定。setupLife() の値で試合を開始する
-    Rematch,       // 確認済み
-};
-
 /// EDH 版の画面遷移とメニュー選択の状態機械。
 /// ハードウェアに一切依存しない。ホスト（pio test -e native）でテストできる。
+///
+/// メニュー遷移の共通部は MenuNav（合成・委譲）に集約されており、
+/// このクラスは EDH 固有の状態（4 人共通 setupLife・各プレイヤーのビュー・
+/// 被弾元選択・タイムアウト）とバリアント差のある入力ハンドラ
+/// （onNext / onLongPressB）だけを保持する。
 ///
 /// ACTIVE 内のビュー状態として、各プレイヤーのビュー（LifeView / CmdDamageView）と
 /// CmdDamageView 中の被弾元選択を管理する。
@@ -84,7 +89,7 @@ public:
 
     void enterActive();
 
-    /// 再描画が必要か（消費型）
+    /// 再描画が必要か（消費型）。MenuNav の dirty フラグに委譲する。
     bool consumeDirty();
 
 private:
@@ -95,10 +100,7 @@ private:
     // 仕様書では 10 秒（設計値、実機調整前提）。
     static constexpr uint32_t kViewTimeoutMs = 10000;
 
-    Screen   screen_      = Screen::Setup;
-    uint8_t  menuIndex_   = 0;
-    bool     confirming_  = false;
-    MenuItem confirmTarget_ = MenuItem::Resume;
+    MenuNav  nav_;                        // 共通の画面遷移コア
     uint32_t setupLife_   = kDefaultLife;  // 4 人共通の初期ライフ
     uint8_t  sensitivityIndex_ = 1;       // デフォルト: 10 ライフ/周
 
@@ -112,9 +114,6 @@ private:
 
     uint32_t lastActivityMs_ = 0;  // 最終操作時刻（タイムアウト計算用）
 
-    bool dirty_ = true;
-
-    void markDirty();
     void resetViewStates();  // 全プレイヤーのビューを LifeView に戻す
 };
 
