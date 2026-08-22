@@ -5,33 +5,29 @@
 namespace counter::app {
 
 void ScreenState::reset() {
-    screen_        = Screen::Setup;
-    menuIndex_     = 0;
-    confirming_    = false;
-    confirmTarget_ = MenuItem::Resume;
+    nav_.reset();
     setupLife_[0]  = kDefaultLife;  // Top
     setupLife_[1]  = kDefaultLife;  // Bottom
-    dirty_         = true;
 }
 
 Screen ScreenState::screen() const {
-    return screen_;
+    return nav_.screen();
 }
 
 uint8_t ScreenState::menuIndex() const {
-    return menuIndex_;
+    return nav_.menuIndex();
 }
 
 MenuItem ScreenState::menuItem() const {
-    return static_cast<MenuItem>(menuIndex_);
+    return nav_.menuItem();
 }
 
 bool ScreenState::awaitingConfirm() const {
-    return confirming_;
+    return nav_.awaitingConfirm();
 }
 
 MenuItem ScreenState::confirmTarget() const {
-    return confirmTarget_;
+    return nav_.confirmTarget();
 }
 
 uint32_t ScreenState::setupLife(PlayerId player) const {
@@ -44,7 +40,7 @@ void ScreenState::setSetupLife(PlayerId player, uint32_t life) {
     // 0 を下限とし、上限は設けない。開始ライフはヒーローカード依存で
     // 20/40 に限らない（FaB の Blitz は 20、CC は 40、ヒーロー固有値もある）。
     setupLife_[static_cast<size_t>(player)] = life;
-    markDirty();
+    nav_.markDirty();
 }
 
 uint8_t ScreenState::sensitivityIndex() const {
@@ -55,13 +51,13 @@ void ScreenState::setSensitivityIndex(uint8_t index) {
     // アプリ層が NVS から読み出した値を設定する。
     // reset() では変更しない（感度はユーザーの永続的な設定であるため）。
     sensitivityIndex_ = index;
-    markDirty();
+    nav_.markDirty();
 }
 
 // --- 入力ハンドラ ---
 
 ScreenAction ScreenState::onNext() {
-    switch (screen_) {
+    switch (nav_.screen()) {
 
     case Screen::Setup: {
         // 開始ライフのプリセットを切り替える。上下両方を同時にトグルする。
@@ -70,24 +66,20 @@ ScreenAction ScreenState::onNext() {
         const uint32_t next = (setupLife_[0] == 20) ? 40u : 20u;
         setupLife_[0] = next;
         setupLife_[1] = next;
-        markDirty();
+        nav_.markDirty();
         return ScreenAction::None;
     }
 
     case Screen::Menu:
-        // 確認待ちを解除する。別の項目へカーソルが移ったのに
-        // 前の項目の確認が残っていると、意図しない Rematch を
-        // 長押しで実行してしまう危険があるため。
-        confirming_ = false;
-        menuIndex_  = (menuIndex_ + 1) % kMenuItemCount;
-        markDirty();
+        // メニュー遷移の共通部（確認待ち解除 + カーソル循環）は MenuNav へ委譲。
+        nav_.cycleMenuItem();
         return ScreenAction::None;
 
     case Screen::Sensitivity: {
         // 感度プリセットを順にトグルする（5 → 10 → 20 → 5 → ...）。
         sensitivityIndex_ =
             (sensitivityIndex_ + 1) % config::kSensitivityPresetCount;
-        markDirty();
+        nav_.markDirty();
         return ScreenAction::None;
     }
 
@@ -99,108 +91,30 @@ ScreenAction ScreenState::onNext() {
 }
 
 ScreenAction ScreenState::onSelect() {
-    switch (screen_) {
-
-    case Screen::Setup:
-        // 誤って試合を始めないため、確定は長押し（onLongPressB）のみとする。
-        // 短押しで開始できてしまうと、プリセット切り替え（A ボタン）と
-        // 間違えて B を押した場合に意図しない試合が始まってしまう。
-        return ScreenAction::None;
-
-    case Screen::Menu: {
-        const auto item = static_cast<MenuItem>(menuIndex_);
-        switch (item) {
-        case MenuItem::Resume:
-            screen_ = Screen::Active;
-            markDirty();
-            return ScreenAction::None;
-
-        case MenuItem::History:
-            screen_ = Screen::History;
-            markDirty();
-            return ScreenAction::None;
-
-        case MenuItem::SetLife:
-            // Setup 画面へ遷移する。現在のライフを setupLife に写す作業は
-            // アプリ層が setSetupLife() を呼んで行う。ScreenState は
-            // domain::MatchState に依存しないため、ここでは画面遷移だけ行う。
-            screen_ = Screen::Setup;
-            markDirty();
-            return ScreenAction::None;
-
-        case MenuItem::SetSensitivity:
-            // Sensitivity 画面へ遷移する。SetLife → Setup と同じパターン。
-            // 現在の感度値は sensitivityIndex_ に保持されているため、
-            // アプリ層での追加処理は不要。
-            screen_ = Screen::Sensitivity;
-            markDirty();
-            return ScreenAction::None;
-
-        case MenuItem::Rematch:
-            // 確認待ちにする。長押しで実行を確定する 2 段階操作。
-            // 対戦中にうっかりメニューから即 Rematch してしまうのを防ぐ。
-            confirming_    = true;
-            confirmTarget_ = MenuItem::Rematch;
-            markDirty();
-            return ScreenAction::None;
-
-        case MenuItem::About:
-            screen_ = Screen::About;
-            markDirty();
-            return ScreenAction::None;
-        }
-        // MenuItem の全値を switch で網羅しているため到達しない。
-        // コンパイラ警告を抑止するためのフォールバック。
-        return ScreenAction::None;
-    }
-
-    case Screen::History:
-        // History からは Menu に戻る。
-        screen_ = Screen::Menu;
-        markDirty();
-        return ScreenAction::None;
-
-    case Screen::About:
-        // About からは Menu に戻る。
-        screen_ = Screen::Menu;
-        markDirty();
-        return ScreenAction::None;
-
-    case Screen::Sensitivity:
-        // Sensitivity からは Menu に戻る。
-        // 感度の反映と NVS 保存はアプリ層が画面遷移を検出して行う。
-        screen_ = Screen::Menu;
-        markDirty();
-        return ScreenAction::None;
-
-    default:
-        // Active: onSelect() に割り当てられた動作はない。
-        return ScreenAction::None;
-    }
+    // FaB / EDH で完全一致しているため MenuNav の共通実装へ委譲する。
+    return nav_.onSelect();
 }
 
 ScreenAction ScreenState::onLongPressB() {
-    switch (screen_) {
+    switch (nav_.screen()) {
 
     case Screen::Setup:
         // Setup の確定は長押しのみとする。
         // 短押しでは何もせず（onSelect 参照）、1 秒の長押しで初めて確定する。
         // これにより A ボタン（プリセット切り替え）と B ボタンの押し間違いによる
         // 意図しない試合開始を防止する。
-        screen_ = Screen::Active;
-        markDirty();
+        nav_.enterActive();
         return ScreenAction::StartMatch;
 
     case Screen::Menu:
         // 確認待ちのときだけ、対象に応じたアクションを返す。
         // 確認待ちでなければ何もしない（長押しの誤操作を防ぐ）。
-        if (!confirming_) {
+        if (!nav_.awaitingConfirm()) {
             return ScreenAction::None;
         }
-        confirming_ = false;
-        if (confirmTarget_ == MenuItem::Rematch) {
-            screen_ = Screen::Active;
-            markDirty();
+        nav_.cancelConfirm();
+        if (nav_.confirmTarget() == MenuItem::Rematch) {
+            nav_.enterActive();
             return ScreenAction::Rematch;
         }
         // confirmTarget_ が Rematch 以外になることは
@@ -213,66 +127,19 @@ ScreenAction ScreenState::onLongPressB() {
 }
 
 ScreenAction ScreenState::onCloseMenu() {
-    switch (screen_) {
-
-    case Screen::Setup:
-        // Setup には戻る先が無い。何もしない。
-        return ScreenAction::None;
-
-    case Screen::Active:
-        // Active から Menu を開く。menuIndex を先頭（Resume）に戻す。
-        screen_    = Screen::Menu;
-        menuIndex_ = 0;
-        confirming_ = false;
-        markDirty();
-        return ScreenAction::None;
-
-    case Screen::Menu:
-        // Menu から Active へ戻る。確認待ちも解除する。
-        confirming_ = false;
-        screen_     = Screen::Active;
-        markDirty();
-        return ScreenAction::None;
-
-    case Screen::History:
-        // History から Menu へ戻る。
-        screen_ = Screen::Menu;
-        markDirty();
-        return ScreenAction::None;
-
-    case Screen::About:
-        // About から Menu へ戻る。
-        screen_ = Screen::Menu;
-        markDirty();
-        return ScreenAction::None;
-
-    case Screen::Sensitivity:
-        // Sensitivity から Menu へ戻る。
-        screen_ = Screen::Menu;
-        markDirty();
-        return ScreenAction::None;
-    }
-    // Screen の全値を switch で網羅しているため到達しない。
-    return ScreenAction::None;
+    // FaB / EDH で完全一致しているため MenuNav の共通実装へ委譲する。
+    return nav_.onCloseMenu();
 }
 
 void ScreenState::enterActive() {
-    screen_ = Screen::Active;
-    markDirty();
+    nav_.enterActive();
 }
 
 bool ScreenState::consumeDirty() {
     // ワンショット: 1 回 true を返したら次は false になる。
-    // GestureDetector::consumeStepChanged() と同じ消費型パターン。
     // アプリ層が「再描画が必要か」を毎ループ問い合わせ、
     // true のときだけ Renderer を呼ぶことで不要な描画を省く。
-    const bool wasDirty = dirty_;
-    dirty_ = false;
-    return wasDirty;
-}
-
-void ScreenState::markDirty() {
-    dirty_ = true;
+    return nav_.consumeDirty();
 }
 
 }  // namespace counter::app
