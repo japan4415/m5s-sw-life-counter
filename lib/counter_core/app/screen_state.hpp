@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "app/menu_nav.hpp"
 #include "domain/life_change.hpp"
 
 namespace counter::app {
@@ -10,24 +11,18 @@ namespace counter::app {
 // counter::PlayerId を counter::app からも非修飾で参照できるようにする。
 using counter::PlayerId;
 
-enum class Screen : uint8_t { Setup, Active, Menu, History, About, Sensitivity };
+// Screen / MenuItem / kMenuItemCount / ScreenAction は
+// app/screen_types.hpp に統合された（Phase 3 共通化）。
+// menu_nav.hpp 経由でこの名前空間に直接見えているため、
+// 呼び出し側の変更は不要。
 
-enum class MenuItem : uint8_t {
-    Resume, History, SetLife, SetSensitivity, Rematch, About
-};
-constexpr uint8_t kMenuItemCount = 6;
-
-// 画面側では実行できず、アプリ層に実行させたい動作。
-// 各入力ハンドラの戻り値として返し、アプリ層が dispatch する。
-enum class ScreenAction : uint8_t {
-    None,
-    StartMatch,    // Setup で確定。setupLife() の値で試合を開始する
-    Rematch,       // 確認済み
-};
-
-/// 画面遷移とメニュー選択の状態機械。
+/// FaB 版の画面遷移とメニュー選択の状態機械。
 /// ハードウェアに一切依存しない。M5Unified.h / Arduino.h を
 /// include せず、ホスト（pio test -e native）でテストできる。
+///
+/// メニュー遷移の共通部は MenuNav（合成・委譲）に集約されており、
+/// このクラスは FaB 固有の状態（プレイヤー別 setupLife・感度）と
+/// バリアント差のある入力ハンドラ（onNext / onLongPressB）だけを保持する。
 ///
 /// 入力メソッド（onNext / onSelect / onLongPressB / onCloseMenu）は
 /// ButtonInput が検出したイベントに応じてアプリ層が呼び出す。
@@ -56,9 +51,9 @@ public:
 
     void enterActive();             // 試合開始後にアプリ層が呼ぶ
 
-    /// 再描画が必要か（消費型）。
+    /// 再描画が必要か（消費型）。MenuNav の dirty フラグに委譲する。
     /// 状態変化（画面遷移・menuIndex 変化・確認待ち変化・setupLife 変化）
-    /// ごとに内部フラグを立て、1 回だけ true を返して落とす。
+    /// ごとにフラグが立ち、1 回だけ true を返して落とす。
     /// GestureDetector::consumeStepChanged() と同じ消費型パターン。
     bool consumeDirty();
 
@@ -66,15 +61,9 @@ private:
     // FaB の Classic Constructed 想定。プリセットトグルも 20 / 40。
     static constexpr uint32_t kDefaultLife = 40;
 
-    Screen   screen_      = Screen::Setup;
-    uint8_t  menuIndex_   = 0;
-    bool     confirming_  = false;       // Rematch の長押し確認待ち
-    MenuItem confirmTarget_ = MenuItem::Resume;  // confirming_ が true のときだけ有効
+    MenuNav  nav_;                                          // 共通の画面遷移コア
     uint32_t setupLife_[2] = {kDefaultLife, kDefaultLife};  // [0]=Top, [1]=Bottom
     uint8_t  sensitivityIndex_ = 1;      // 感度プリセットインデックス（デフォルト: 10 ライフ/周）
-    bool     dirty_       = true;        // 初期状態は描画が必要
-
-    void markDirty();
 };
 
 }  // namespace counter::app

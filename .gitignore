@@ -12,3 +12,6 @@
 *.elf
 *.bin
 *.map
+
+# Claude Code のローカル設定
+.claude/
