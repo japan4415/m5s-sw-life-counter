@@ -11,8 +11,11 @@
 #include <cstdint>
 
 #include "app_config.hpp"
+#include "ui/theme_common.hpp"
 
 namespace counter::ui::edh_theme {
+
+using namespace counter::ui::theme_common;
 
 // ============================================================
 // ファームウェアバージョン（EDH 独自。FaB とは独立管理）
@@ -22,9 +25,6 @@ constexpr const char* kFirmwareVersion = "0.1.0";
 // ============================================================
 // 色定義 (RGB565)
 // ============================================================
-
-// --- 背景 ---
-constexpr uint16_t kBgColor = 0x0000;  // 黒
 
 // --- 4 プレイヤーのテーマカラー ---
 // 色覚差対応: 輝度差が大きく、主要な色覚特性 (1 型・2 型・3 型) で
@@ -37,14 +37,6 @@ constexpr uint16_t kPlayerColor[4] = {
     0x07E0,  // P3 (下): グリーン
     0xF81F,  // P4 (左): マゼンタ
 };
-
-// --- ライフ数字 ---
-constexpr uint16_t kLifeColor        = 0xFFFF;  // 白（通常時）
-constexpr uint16_t kPreviewLifeColor = 0xBDF7;  // 明るいグレー（プレビュー中）
-
-// --- 差分表示 ---
-constexpr uint16_t kDeltaDecreaseColor = 0xFB40;  // 暖色オレンジ（減少）
-constexpr uint16_t kDeltaIncreaseColor = 0x07FF;  // 寒色シアン（増加）
 
 // --- 敗北表示 ---
 // ライフ 0 以下または統率者ダメージ 21 以上の敗北を示すグレーアウト。
@@ -59,21 +51,8 @@ constexpr uint16_t kCmdDmgWarningColor = 0xFB40;  // オレンジ（21 以上）
 constexpr uint16_t kCmdDmgSelectedColor = 0xFFFF;  // 白（選択中）
 constexpr uint16_t kCmdDmgNormalColor   = 0x8410;  // グレー（通常）
 
-// --- 外周リング ---
-constexpr uint16_t kRingNormalColor    = 0x2104;  // ダークグレー（通常）
-constexpr uint16_t kRingHighlightColor = 0x4A69;  // 明るいグレー（操作中）
-constexpr uint16_t kRingDimColor       = 0x0841;  // 極暗グレー（非操作側）
-
-// --- タッチロック ---
-constexpr uint16_t kLockIconColor   = 0xC618;  // 明るめグレー
-constexpr uint16_t kRingLockedColor = 0x0841;  // 極暗グレー（ロック時リング）
-
-// --- 共通 UI ---
-constexpr uint16_t kHintTextColor = 0x8410;  // グレー
-
 // --- 分割線 ---
 // 4 扇形の境界を示す対角線。視覚的に明示しつつ控えめな色にする。
-constexpr uint16_t kDividerColor  = 0x2945;  // ダークグレー
 constexpr int32_t  kDividerWidth  = 2;       // 線の太さ (px)
 
 // ============================================================
@@ -192,12 +171,6 @@ constexpr float kCmdDmgLabelFontSize  = 1.0f;  // 被弾元ラベル ("P1", "P2"
 constexpr float kCmdDmgHintFontSize   = 1.0f;  // "Tap opponent" ヒント
 
 // ============================================================
-// リング寸法
-// ============================================================
-constexpr int32_t kRingInnerR = static_cast<int32_t>(config::kRingInnerRadius);
-constexpr int32_t kRingOuterR = 232;
-
-// ============================================================
 // タッチロック表示（画面中央）
 // ============================================================
 constexpr int32_t kLockRegionW = 60;
@@ -213,102 +186,6 @@ constexpr int32_t kSetupLifeY     = 180;  // ライフ数字の中心 y
 constexpr int32_t kSetupHintY1    = 240;  // "Ring: +/- Life"
 constexpr int32_t kSetupHintY2    = 265;  // "A: Life presets"
 constexpr int32_t kSetupHintY3    = 300;  // "Hold B to START"
-constexpr float kSetupLifeFontSize  = 7.0f;
-constexpr float kSetupHintFontSize  = 1.5f;
-constexpr float kSetupStartFontSize = 2.0f;
-constexpr uint16_t kSetupStartColor = 0x07FF;  // シアン
-
-// ============================================================
-// メニュー画面（FaB と同構成の 6 項目）
-// ============================================================
-constexpr int32_t kMenuFirstItemY  = 157;
-constexpr int32_t kMenuItemSpacing = 24;
-constexpr int32_t kMenuConfirmMsgY = 330;
-constexpr int32_t kMenuHintY       = 350;
-
-constexpr float kMenuItemFontSize    = 2.0f;
-constexpr float kMenuHintFontSize    = 1.0f;
-constexpr float kMenuConfirmFontSize = 1.5f;
-
-constexpr uint16_t kMenuSelectedColor = 0x07FF;  // シアン
-constexpr uint16_t kMenuNormalColor   = 0x8410;  // グレー
-constexpr uint16_t kMenuConfirmColor  = 0xFB40;  // オレンジ
-
-// ============================================================
-// 長押し進捗（画面共通）
-// ============================================================
-constexpr int32_t  kHoldArcInnerR     = 185;
-constexpr int32_t  kHoldArcOuterR     = 205;
-constexpr uint16_t kHoldArcTrackColor = 0x4208;
-constexpr uint16_t kHoldArcColor      = 0x07FF;
-
-// ============================================================
-// バッテリー表示（メニュー画面）
-// ============================================================
-constexpr int32_t kBatteryY = 138;
-constexpr int32_t kBatteryIconBodyW = 26;
-constexpr int32_t kBatteryIconBodyH = 14;
-constexpr int32_t kBatteryIconTermW = 3;
-constexpr int32_t kBatteryIconTermH = 7;
-constexpr int32_t kBatteryIconPad   = 2;
-constexpr int32_t kBatteryIconGap   = 4;
-constexpr int32_t kBatteryBorderNormal  = 1;
-constexpr int32_t kBatteryBorderWarning = 2;
-constexpr float kBatteryPercentFontSize  = 1.5f;
-constexpr float kBatteryWarnMarkFontSize = 1.5f;
-constexpr uint16_t kBatteryNormalColor  = 0x8410;
-constexpr uint16_t kBatteryWarningColor = 0xFB40;
-constexpr uint16_t kBatteryChargeBoltColor = 0xFFFF;
-constexpr uint8_t  kBatteryWarningThreshold = 20;
-
-// ============================================================
-// 履歴画面
-// ============================================================
-constexpr int32_t kHistoryTitleY     = 130;
-constexpr int32_t kHistoryFirstItemY = 160;
-constexpr int32_t kHistorySpacing    = 18;
-constexpr int32_t kHistoryFooterY    = 350;
-constexpr size_t  kHistoryMaxVisible = 8;
-
-constexpr float kHistoryTitleFontSize  = 2.0f;
-constexpr float kHistoryItemFontSize   = 1.5f;
-constexpr float kHistoryFooterFontSize = 1.0f;
-
-constexpr uint16_t kHistoryTitleColor = 0xFFFF;
-constexpr uint16_t kHistoryEmptyColor = 0x4208;
-
-// ============================================================
-// About 画面
-// ============================================================
-constexpr int32_t kAboutTitleY   = 200;
-constexpr int32_t kAboutVersionY = 240;
-constexpr int32_t kAboutFooterY  = 350;
-
-constexpr float kAboutTitleFontSize   = 2.5f;
-constexpr float kAboutVersionFontSize = 2.0f;
-constexpr float kAboutFooterFontSize  = 1.0f;
-
-constexpr uint16_t kAboutTitleColor   = 0xFFFF;
-constexpr uint16_t kAboutVersionColor = 0x8410;
-
-// ============================================================
-// 感度設定画面
-// ============================================================
-constexpr int32_t kSensitivityTitleY   = 175;
-constexpr int32_t kSensitivityValueY   = 220;
-constexpr int32_t kSensitivityLabelY   = 255;
-constexpr int32_t kSensitivityPresetY  = 290;
-constexpr int32_t kSensitivityHintY    = 350;
-
-constexpr float kSensitivityTitleFontSize  = 2.0f;
-constexpr float kSensitivityValueFontSize  = 5.0f;
-constexpr float kSensitivityLabelFontSize  = 1.5f;
-constexpr float kSensitivityPresetFontSize = 2.0f;
-constexpr float kSensitivityHintFontSize   = 1.0f;
-
-constexpr uint16_t kSensitivityTitleColor = 0xFFFF;
-constexpr uint16_t kSensitivityValueColor = 0xFFFF;
-constexpr uint16_t kSensitivityLabelColor = 0x8410;
 
 // ============================================================
 // 回転角（M5Canvas::setRotation() の値）
