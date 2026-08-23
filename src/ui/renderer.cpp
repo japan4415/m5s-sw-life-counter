@@ -11,6 +11,7 @@
 //   (Phase 0 Step 8 実測、ADR-15 決定)
 
 #include "ui/renderer.hpp"
+#include "ui/render_framework.hpp"
 #include "ui/theme.hpp"
 #include "app_config.hpp"
 
@@ -88,12 +89,10 @@ void Renderer::begin() {
 void Renderer::drawAll(const domain::MatchState& state) {
     // Canvas が確保できていれば Canvas へ描画し最後に一括転送。
     // 確保に失敗している場合は Display へ直接描画する（フォールバック）。
-    LovyanGFX* target = canvasReady_
-        ? static_cast<LovyanGFX*>(&canvas_)
-        : static_cast<LovyanGFX*>(&M5.Display);
+    LovyanGFX* target = selectDrawTarget(canvasReady_, canvas_);
 
     // 1. 背景を黒で塗りつぶす
-    target->fillScreen(theme::kBgColor);
+    beginFullScreenDraw(target, theme::kBgColor, lastHoldPercent_);
 
     // 2. 外周リング
     //    ロック中は暗転して操作無効を視覚的に伝える (docs/05-ui-ux.md 表示ルール)
@@ -105,10 +104,6 @@ void Renderer::drawAll(const domain::MatchState& state) {
     // drawHoldProgress(0) がリング復元に使うため、現在の色を追跡する
     ringTopColor_ = ringColor;
     ringBottomColor_ = ringColor;
-
-    // 全画面転送で進捗弧が消えるため、次回 drawHoldProgress() は
-    // トラックから描き直す必要がある
-    lastHoldPercent_ = 0;
 
     // 3. 中央分割帯
     auto divY = static_cast<int32_t>(config::kCenterY)
@@ -138,9 +133,7 @@ void Renderer::drawAll(const domain::MatchState& state) {
     }
 
     // 6. 全画面転送（起動時・リマッチ時のみ呼ぶ想定。44.6 ms かかる）
-    if (canvasReady_) {
-        canvas_.pushSprite(0, 0);
-    }
+    endFullScreenDraw(canvasReady_, canvas_);
 }
 
 // ============================================================
@@ -495,20 +488,14 @@ void Renderer::drawSetup(const app::ScreenState& sc) {
     // 毎ループ呼ばれない前提。ScreenState::consumeDirty() が true のときだけ呼ぶ。
     // 全画面転送 (44.6 ms) を行うため、高頻度呼び出しは避けること。
 
-    LovyanGFX* target = canvasReady_
-        ? static_cast<LovyanGFX*>(&canvas_)
-        : static_cast<LovyanGFX*>(&M5.Display);
+    LovyanGFX* target = selectDrawTarget(canvasReady_, canvas_);
 
-    target->fillScreen(theme::kBgColor);
+    beginFullScreenDraw(target, theme::kBgColor, lastHoldPercent_);
 
     // セットアップ画面はリングを描画しないため、弧領域は背景色になる。
     // drawHoldProgress(0) が正しく復元できるよう追跡する。
     ringTopColor_ = theme::kBgColor;
     ringBottomColor_ = theme::kBgColor;
-
-    // 全画面転送で進捗弧が消えるため、次回 drawHoldProgress() は
-    // トラックから描き直す必要がある
-    lastHoldPercent_ = 0;
 
     auto cx = static_cast<int32_t>(config::kCenterX);
 
@@ -538,9 +525,7 @@ void Renderer::drawSetup(const app::ScreenState& sc) {
     target->drawString("Hold B to START", cx, theme::kSetupHintY3);
 
     // 全画面転送
-    if (canvasReady_) {
-        canvas_.pushSprite(0, 0);
-    }
+    endFullScreenDraw(canvasReady_, canvas_);
 }
 
 // ============================================================
@@ -550,20 +535,14 @@ void Renderer::drawSetup(const app::ScreenState& sc) {
 void Renderer::drawMenu(const app::ScreenState& sc,
                         uint8_t batteryPercent, bool charging) {
 
-    LovyanGFX* target = canvasReady_
-        ? static_cast<LovyanGFX*>(&canvas_)
-        : static_cast<LovyanGFX*>(&M5.Display);
+    LovyanGFX* target = selectDrawTarget(canvasReady_, canvas_);
 
-    target->fillScreen(theme::kBgColor);
+    beginFullScreenDraw(target, theme::kBgColor, lastHoldPercent_);
 
     // メニュー画面はリングを描画しないため、弧領域は背景色になる。
     // drawHoldProgress(0) が正しく復元できるよう追跡する。
     ringTopColor_ = theme::kBgColor;
     ringBottomColor_ = theme::kBgColor;
-
-    // 全画面転送で進捗弧が消えるため、次回 drawHoldProgress() は
-    // トラックから描き直す必要がある
-    lastHoldPercent_ = 0;
 
     auto cx = static_cast<int32_t>(config::kCenterX);
 
@@ -768,9 +747,7 @@ void Renderer::drawMenu(const app::ScreenState& sc,
     // drawMenu() は項目一覧・操作説明・バッテリー残量を描画する。
     // アプリ層は必要に応じて drawMenu() 後に drawHoldProgress() を呼ぶこと。
 
-    if (canvasReady_) {
-        canvas_.pushSprite(0, 0);
-    }
+    endFullScreenDraw(canvasReady_, canvas_);
 }
 
 // ============================================================
@@ -780,19 +757,13 @@ void Renderer::drawMenu(const app::ScreenState& sc,
 void Renderer::drawHistory(const domain::MatchState& state) {
     // 毎ループ呼ばれない前提。画面遷移時に 1 回だけ呼ぶ。
 
-    LovyanGFX* target = canvasReady_
-        ? static_cast<LovyanGFX*>(&canvas_)
-        : static_cast<LovyanGFX*>(&M5.Display);
+    LovyanGFX* target = selectDrawTarget(canvasReady_, canvas_);
 
-    target->fillScreen(theme::kBgColor);
+    beginFullScreenDraw(target, theme::kBgColor, lastHoldPercent_);
 
     // 履歴画面はリングを描画しないため、弧領域は背景色になる
     ringTopColor_ = theme::kBgColor;
     ringBottomColor_ = theme::kBgColor;
-
-    // 全画面転送で進捗弧が消えるため、次回 drawHoldProgress() は
-    // トラックから描き直す必要がある
-    lastHoldPercent_ = 0;
 
     auto cx = static_cast<int32_t>(config::kCenterX);
 
@@ -865,9 +836,7 @@ void Renderer::drawHistory(const domain::MatchState& state) {
     target->setTextColor(theme::kHintTextColor, theme::kBgColor);
     target->drawString("B: Back", cx, theme::kHistoryFooterY);
 
-    if (canvasReady_) {
-        canvas_.pushSprite(0, 0);
-    }
+    endFullScreenDraw(canvasReady_, canvas_);
 }
 
 // ============================================================
@@ -877,19 +846,13 @@ void Renderer::drawHistory(const domain::MatchState& state) {
 void Renderer::drawAbout() {
     // 毎ループ呼ばれない前提。画面遷移時に 1 回だけ呼ぶ。
 
-    LovyanGFX* target = canvasReady_
-        ? static_cast<LovyanGFX*>(&canvas_)
-        : static_cast<LovyanGFX*>(&M5.Display);
+    LovyanGFX* target = selectDrawTarget(canvasReady_, canvas_);
 
-    target->fillScreen(theme::kBgColor);
+    beginFullScreenDraw(target, theme::kBgColor, lastHoldPercent_);
 
     // About 画面はリングを描画しないため、弧領域は背景色になる
     ringTopColor_ = theme::kBgColor;
     ringBottomColor_ = theme::kBgColor;
-
-    // 全画面転送で進捗弧が消えるため、次回 drawHoldProgress() は
-    // トラックから描き直す必要がある
-    lastHoldPercent_ = 0;
 
     auto cx = static_cast<int32_t>(config::kCenterX);
 
@@ -913,9 +876,7 @@ void Renderer::drawAbout() {
     target->setTextColor(theme::kHintTextColor, theme::kBgColor);
     target->drawString("B: Back", cx, theme::kAboutFooterY);
 
-    if (canvasReady_) {
-        canvas_.pushSprite(0, 0);
-    }
+    endFullScreenDraw(canvasReady_, canvas_);
 }
 
 // ============================================================
@@ -925,19 +886,13 @@ void Renderer::drawAbout() {
 void Renderer::drawSensitivity(const app::ScreenState& sc) {
     // 毎ループ呼ばれない前提。画面遷移時やプリセット変更時に呼ぶ。
 
-    LovyanGFX* target = canvasReady_
-        ? static_cast<LovyanGFX*>(&canvas_)
-        : static_cast<LovyanGFX*>(&M5.Display);
+    LovyanGFX* target = selectDrawTarget(canvasReady_, canvas_);
 
-    target->fillScreen(theme::kBgColor);
+    beginFullScreenDraw(target, theme::kBgColor, lastHoldPercent_);
 
     // 感度設定画面はリングを描画しないため、弧領域は背景色になる
     ringTopColor_ = theme::kBgColor;
     ringBottomColor_ = theme::kBgColor;
-
-    // 全画面転送で進捗弧が消えるため、次回 drawHoldProgress() は
-    // トラックから描き直す必要がある
-    lastHoldPercent_ = 0;
 
     auto cx = static_cast<int32_t>(config::kCenterX);
 
@@ -993,9 +948,7 @@ void Renderer::drawSensitivity(const app::ScreenState& sc) {
     target->setTextColor(theme::kHintTextColor, theme::kBgColor);
     target->drawString("A: Change  B: OK", cx, theme::kSensitivityHintY);
 
-    if (canvasReady_) {
-        canvas_.pushSprite(0, 0);
-    }
+    endFullScreenDraw(canvasReady_, canvas_);
 }
 
 // ============================================================
