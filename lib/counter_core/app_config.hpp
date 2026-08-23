@@ -35,6 +35,27 @@ constexpr uint8_t kVibrationLevel = 255;
 constexpr uint32_t kMinVibrationMs = 20;
 
 // ============================================================
+// 振動パターンの持続時間 (ms)
+// FaB / EDH 両ファームウェアで共通。docs/05-ui-ux.md の提案値に基づく。
+// 通しでの体感評価はまだ行っていないため、実機テスト後に調整しうる。
+// ============================================================
+
+constexpr uint32_t kVibStartMs    = 30;   // スライド操作開始の合図
+constexpr uint32_t kVibConfirmMs  = 40;   // 指を離して確定
+constexpr uint32_t kVibRejectMs   = 20;   // 開始禁止領域の警告（最短パルス）
+constexpr uint32_t kVibLifeZeroMs = 120;  // ライフ 0 到達の強い振動
+
+// Undo / ロック系の振動時間は docs/05 に明記されていないが、
+// 「振動の強弱は時間の長短でのみ区別する」(docs/05) の原則に従い、
+// 既存パターン（20ms = 警告/無効、40ms = 確定/成功）との一貫性で設計する
+// （Phase 2 Wave 1 で追加）。
+constexpr uint32_t kVibUndoSuccessMs = 40;   // Undo 成功: 確定と同等の「操作成立」フィードバック
+constexpr uint32_t kVibUndoFailMs    = 20;   // Undo 失敗（履歴空）: 無効操作の警告（最短パルス）
+constexpr uint32_t kVibLockMs        = 80;   // ロック: 重要な状態変更を長めのパルスで伝達
+constexpr uint32_t kVibUnlockMs      = 40;   // ロック解除: 通常の確定と同等
+constexpr uint32_t kVibLockTouchMs   = 20;   // ロック中タッチ: 最短パルスで「無効」を通知
+
+// ============================================================
 // Phase 1 実機操作で確定したパラメータ
 // ============================================================
 
