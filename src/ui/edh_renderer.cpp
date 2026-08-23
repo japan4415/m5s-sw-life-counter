@@ -13,6 +13,7 @@
 // 全画面 (468*468*2 = 438,048 bytes) の約 1/27。
 
 #include "ui/edh_renderer.hpp"
+#include "ui/render_framework.hpp"
 #include "ui/edh_theme.hpp"
 #include "app_config.hpp"
 #include "domain/edh_life_change.hpp"
@@ -105,12 +106,9 @@ void EdhRenderer::begin() {
 
 void EdhRenderer::drawAll(const edh::MatchState& state,
                           const edh::app::EdhScreenState& screenState) {
-    LovyanGFX* target = canvasReady_
-        ? static_cast<LovyanGFX*>(&canvas_)
-        : static_cast<LovyanGFX*>(&M5.Display);
+    LovyanGFX* target = selectDrawTarget(canvasReady_, canvas_);
 
-    target->fillScreen(edh_theme::kBgColor);
-    lastHoldPercent_ = 0;
+    beginFullScreenDraw(target, edh_theme::kBgColor, lastHoldPercent_);
 
     // 4 プレイヤーの扇形を描画する（sectorCanvas_ が確保済みの場合のみ）
     if (sectorReady_) {
@@ -131,9 +129,7 @@ void EdhRenderer::drawAll(const edh::MatchState& state,
     // 分割線を描画して扇形の境界を明示する
     drawDividers(target);
 
-    if (canvasReady_) {
-        canvas_.pushSprite(0, 0);
-    }
+    endFullScreenDraw(canvasReady_, canvas_);
 }
 
 // ============================================================
@@ -480,12 +476,9 @@ void EdhRenderer::clearLockRegion(LovyanGFX* target) {
 // ============================================================
 
 void EdhRenderer::drawSetup(const edh::app::EdhScreenState& sc) {
-    LovyanGFX* target = canvasReady_
-        ? static_cast<LovyanGFX*>(&canvas_)
-        : static_cast<LovyanGFX*>(&M5.Display);
+    LovyanGFX* target = selectDrawTarget(canvasReady_, canvas_);
 
-    target->fillScreen(edh_theme::kBgColor);
-    lastHoldPercent_ = 0;
+    beginFullScreenDraw(target, edh_theme::kBgColor, lastHoldPercent_);
 
     auto cx = static_cast<int32_t>(config::kCenterX);
 
@@ -507,9 +500,7 @@ void EdhRenderer::drawSetup(const edh::app::EdhScreenState& sc) {
     target->setTextColor(edh_theme::kSetupStartColor, edh_theme::kBgColor);
     target->drawString("Hold B to START", cx, edh_theme::kSetupHintY3);
 
-    if (canvasReady_) {
-        canvas_.pushSprite(0, 0);
-    }
+    endFullScreenDraw(canvasReady_, canvas_);
 }
 
 // ============================================================
@@ -518,12 +509,9 @@ void EdhRenderer::drawSetup(const edh::app::EdhScreenState& sc) {
 
 void EdhRenderer::drawMenu(const edh::app::EdhScreenState& sc,
                             uint8_t batteryPercent, bool charging) {
-    LovyanGFX* target = canvasReady_
-        ? static_cast<LovyanGFX*>(&canvas_)
-        : static_cast<LovyanGFX*>(&M5.Display);
+    LovyanGFX* target = selectDrawTarget(canvasReady_, canvas_);
 
-    target->fillScreen(edh_theme::kBgColor);
-    lastHoldPercent_ = 0;
+    beginFullScreenDraw(target, edh_theme::kBgColor, lastHoldPercent_);
 
     auto cx = static_cast<int32_t>(config::kCenterX);
 
@@ -576,9 +564,7 @@ void EdhRenderer::drawMenu(const edh::app::EdhScreenState& sc,
     target->drawString("A=Next  B=Select  A+B(hold)=Close", cx,
                        edh_theme::kMenuHintY);
 
-    if (canvasReady_) {
-        canvas_.pushSprite(0, 0);
-    }
+    endFullScreenDraw(canvasReady_, canvas_);
 }
 
 // ============================================================
@@ -607,12 +593,9 @@ void EdhRenderer::drawBatteryIcon(LovyanGFX* target,
 // ============================================================
 
 void EdhRenderer::drawHistory(const edh::MatchState& state) {
-    LovyanGFX* target = canvasReady_
-        ? static_cast<LovyanGFX*>(&canvas_)
-        : static_cast<LovyanGFX*>(&M5.Display);
+    LovyanGFX* target = selectDrawTarget(canvasReady_, canvas_);
 
-    target->fillScreen(edh_theme::kBgColor);
-    lastHoldPercent_ = 0;
+    beginFullScreenDraw(target, edh_theme::kBgColor, lastHoldPercent_);
 
     auto cx = static_cast<int32_t>(config::kCenterX);
 
@@ -661,9 +644,7 @@ void EdhRenderer::drawHistory(const edh::MatchState& state) {
     target->setTextColor(edh_theme::kHintTextColor, edh_theme::kBgColor);
     target->drawString("B: Back", cx, edh_theme::kHistoryFooterY);
 
-    if (canvasReady_) {
-        canvas_.pushSprite(0, 0);
-    }
+    endFullScreenDraw(canvasReady_, canvas_);
 }
 
 // ============================================================
@@ -671,12 +652,9 @@ void EdhRenderer::drawHistory(const edh::MatchState& state) {
 // ============================================================
 
 void EdhRenderer::drawAbout() {
-    LovyanGFX* target = canvasReady_
-        ? static_cast<LovyanGFX*>(&canvas_)
-        : static_cast<LovyanGFX*>(&M5.Display);
+    LovyanGFX* target = selectDrawTarget(canvasReady_, canvas_);
 
-    target->fillScreen(edh_theme::kBgColor);
-    lastHoldPercent_ = 0;
+    beginFullScreenDraw(target, edh_theme::kBgColor, lastHoldPercent_);
 
     auto cx = static_cast<int32_t>(config::kCenterX);
 
@@ -697,9 +675,7 @@ void EdhRenderer::drawAbout() {
     target->setTextColor(edh_theme::kHintTextColor, edh_theme::kBgColor);
     target->drawString("B: Back", cx, edh_theme::kAboutFooterY);
 
-    if (canvasReady_) {
-        canvas_.pushSprite(0, 0);
-    }
+    endFullScreenDraw(canvasReady_, canvas_);
 }
 
 // ============================================================
@@ -707,12 +683,9 @@ void EdhRenderer::drawAbout() {
 // ============================================================
 
 void EdhRenderer::drawSensitivity(const edh::app::EdhScreenState& sc) {
-    LovyanGFX* target = canvasReady_
-        ? static_cast<LovyanGFX*>(&canvas_)
-        : static_cast<LovyanGFX*>(&M5.Display);
+    LovyanGFX* target = selectDrawTarget(canvasReady_, canvas_);
 
-    target->fillScreen(edh_theme::kBgColor);
-    lastHoldPercent_ = 0;
+    beginFullScreenDraw(target, edh_theme::kBgColor, lastHoldPercent_);
 
     auto cx = static_cast<int32_t>(config::kCenterX);
 
@@ -748,9 +721,7 @@ void EdhRenderer::drawSensitivity(const edh::app::EdhScreenState& sc) {
     target->setTextColor(edh_theme::kHintTextColor, edh_theme::kBgColor);
     target->drawString("A: Change  B: OK", cx, edh_theme::kSensitivityHintY);
 
-    if (canvasReady_) {
-        canvas_.pushSprite(0, 0);
-    }
+    endFullScreenDraw(canvasReady_, canvas_);
 }
 
 // ============================================================
