@@ -12,7 +12,7 @@
     "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
-    "esptool-js": "^0.6.1"
+    "esptool-js": "^0.7.0"
   },
   "devDependencies": {
     "@types/w3c-web-serial": "^1.0.8",
