@@ -146,11 +146,11 @@ constexpr uint16_t kSetupPresetInactiveColor = 0x4208;  // ダークグレー（
 // ============================================================
 // メニュー画面
 // ============================================================
-// 項目は 5 つ（Resume / History / Sensitivity / Rematch / About）。
-// SetLife は得点制の Riftbound では意味を持たないため表示しない
-// （共通 MenuItem enum は FaB との互換で 6 値固定。選択対象から外す）。
+// 項目は SetLife を除く 6 つ（Resume / History / Sensitivity / Rematch /
+// About / Switch Game）。SetLife は得点制の Riftbound では意味を持たないため
+// 表示しない（共通 MenuItem enum は 7 値固定。選択対象から外す）。
 // 共通の kMenuFirstItemY (157) / kMenuItemSpacing (24) を使うと
-// 末尾 y = 157 + 4*24 = 253 となり、5 項目でも円形画面に収まる
+// 末尾 y = 157 + 5*24 = 277 となり、6 項目でも円形画面に収まる
 // （最遠項目 y=157 の中心距離 77px、半径 165 で利用可能幅約 292px）。
 
 // 長押しプログレスの円弧（FaB 版と同一の幾何）

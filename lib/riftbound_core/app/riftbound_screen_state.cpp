@@ -103,7 +103,13 @@ ScreenAction RiftboundScreenState::onLongPressB() {
             nav_.enterActive();
             return ScreenAction::Rematch;
         }
-        // confirmTarget_ が Rematch 以外になることは
+        if (nav_.confirmTarget() == MenuItem::SwitchGame) {
+            // ゲーム選択画面へ戻る。Active には遷移しない --
+            // アプリ層が AppLauncher へ処理を譲り、このコントローラは
+            // 停止する（ScreenAction::SwitchGame を参照）。
+            return ScreenAction::SwitchGame;
+        }
+        // confirmTarget_ が Rematch / SwitchGame 以外になることは
         // onSelect() の実装上ありえないが、安全のため None を返す。
         return ScreenAction::None;
 

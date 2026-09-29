@@ -520,6 +520,7 @@ void RiftboundRenderer::drawMenu(const riftbound::app::RiftboundScreenState& sc,
         { riftbound::app::MenuItem::SetSensitivity, "Sensitivity" },
         { riftbound::app::MenuItem::Rematch,        "Rematch" },
         { riftbound::app::MenuItem::About,          "About" },
+        { riftbound::app::MenuItem::SwitchGame,     "Switch Game" },
     };
     static constexpr size_t kMenuEntryCount =
         sizeof(kMenuEntries) / sizeof(kMenuEntries[0]);

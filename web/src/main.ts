@@ -24,27 +24,14 @@ import {
   formatDate,
 } from "./api";
 import type { Release } from "./api";
-import { detectVariant } from "./nav";
-import type { FirmwareVariant } from "./nav";
 
-// ---- バリアント判定 ----
-const currentVariant: FirmwareVariant = detectVariant() ?? "fab";
-
-/** バリアントに応じたファームウェアファイル名を返す */
-function firmwareFileName(variant: FirmwareVariant): string {
-  switch (variant) {
-    case "edh":
-      return "firmware-edh.bin";
-    case "riftbound":
-      return "firmware-riftbound.bin";
-    default:
-      return "firmware.bin";
-  }
-}
+// ---- 統合ファームウェア ----
+// 1 本の firmware.bin に全ゲームモード（FaB / MTG EDH / Riftbound）が収録され
+// ている（docs/17）。書き込みページ自体はゲームごとに用意し、案内文言を
+// 出し分けるが、書き込むファイルは共通である。
 
 // ---- 書き込み構成（docs/14-web-flasher-design.md §2・§5） ----
-const FIRMWARE_BIN_NAME = firmwareFileName(currentVariant);
-
+const FIRMWARE_BIN_NAME = "firmware.bin";
 const FIRMWARE_FILES_FULL = [
   { name: "bootloader.bin", address: 0x0 },
   { name: "partitions.bin", address: 0x8000 },
@@ -197,21 +184,17 @@ async function loadReleases() {
     return;
   }
 
-  // 対応ファームウェアをアセットに含むリリースのみ表示する
-  // FaB: firmware.bin / EDH: firmware-edh.bin / Riftbound: firmware-riftbound.bin
+  // 統合ファームウェアをアセットに含むリリースのみ表示する
+  // （firmware.bin に全ゲームモードが収録されている）
   releases = releases.filter((r) =>
     r.assets.some((a) => a.name === FIRMWARE_BIN_NAME),
   );
 
   if (releases.length === 0) {
     const empty = document.createElement("p");
-    empty.className = currentVariant === "fab" ? "warn-box" : "info-box";
+    empty.className = "warn-box";
     empty.textContent =
-      currentVariant === "edh"
-        ? "EDH ファームウェアはまだ公開されていません。リリースが公開されると、ここにバージョン一覧が表示されます。"
-        : currentVariant === "riftbound"
-          ? "Riftbound ファームウェアはまだ公開されていません。リリースが公開されると、ここにバージョン一覧が表示されます。"
-          : "リリースがまだありません。初回セットアップはリポジトリの CI で v* タグの Release を作成する必要があります。";
+      "リリースがまだありません。初回セットアップはリポジトリの CI で v* タグの Release を作成する必要があります。";
     list.appendChild(empty);
     return;
   }

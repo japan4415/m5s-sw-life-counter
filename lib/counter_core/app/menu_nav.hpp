@@ -4,17 +4,23 @@
 
 #include "app/screen_types.hpp"
 
-// FaB（ScreenState）と EDH（EdhScreenState）で正規化後コード差分ゼロだった
-// 画面遷移・メニュー選択ロジックを集約した合成用クラス（Phase 3 抽出）。
+// FaB（ScreenState）/ EDH（EdhScreenState）/ Riftbound（RiftboundScreenState）で
+// 正規化後コード差分ゼロだった画面遷移・メニュー選択ロジックを集約した合成用クラス
+// （Phase 3 抽出。統合ファームウェアでは 3 モード共通のコア）。
 //
-// - 両 ScreenState がメンバとして保持し、共通ハンドラを委譲する。
+// - 各 ScreenState がメンバとして保持し、共通ハンドラを委譲する。
 //   継承・仮想関数は使わない合成 + 委譲ベース。
 // - ハードウェアに一切依存しない。M5Unified.h / Arduino.h を include せず、
 //   ホスト（pio test -e native）でテストできる。
-// - バリアント固有の状態（setupLife のモデル差、EDH のビュー状態、感度）は
-//   各 ScreenState 側が保持する。このクラスは持たない。
-// - 再描画要求（dirty フラグ）も両バリアント共通のためここに集約する。
+// - バリアント固有の状態（setupLife のモデル差、EDH のビュー状態、
+//   Riftbound の SetLife スキップ、感度）は各 ScreenState 側が保持する。
+//   このクラスは持たない。
+// - 再描画要求（dirty フラグ）も全モード共通のためここに集約する。
 //   バリアント固有状態の変更時は markDirty() を呼んで同じフラグを立てる。
+//
+// メニュー構成（統合ファームウェア）:
+//   Resume(0), History(1), SetLife(2), SetSensitivity(3), Rematch(4),
+//   About(5), SwitchGame(6)
 
 namespace counter::app {
 
@@ -115,6 +121,17 @@ public:
                 // 対戦中にうっかりメニューから即 Rematch してしまうのを防ぐ。
                 confirming_    = true;
                 confirmTarget_ = MenuItem::Rematch;
+                markDirty();
+                return ScreenAction::None;
+
+            case MenuItem::SwitchGame:
+                // 確認待ちにする（Rematch と同じ 2 段階操作）。
+                // ゲーム切替は別ゲームの Setup / 復元へ移るため、誤操作防止の
+                // ために長押し確認を要求する。確定時のアクション
+                //（ScreenAction::SwitchGame）は各バリアントの onLongPressB が
+                // 返し、アプリ層が AppLauncher へ処理を譲る。
+                confirming_    = true;
+                confirmTarget_ = MenuItem::SwitchGame;
                 markDirty();
                 return ScreenAction::None;
 

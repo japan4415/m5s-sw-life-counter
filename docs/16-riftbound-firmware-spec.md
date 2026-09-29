@@ -3,6 +3,8 @@
 > **ステータス: 実装済み・実機検証待ち**
 > ビルド env `m5stack-stopwatch-riftbound` で実装済み。ホストテスト 37 件全通過（うち Riftbound 新規 37 件: ドメイン 18 / 画面状態 19）。3 ファームウェア env のビルド成功を確認済み。**実機検証は未実施**であり、描画の視認性やテーマ色の見え方は実機調整前提である。
 > 本仕様書は設計判断の記録として維持する。
+>
+> **注記（統合ファームウェア移行後）**: 本バリアントは [docs/17-unified-firmware-spec.md](./17-unified-firmware-spec.md) の統合ファームウェアのゲームモードの一つとして、env `m5stack-stopwatch` から提供されている（ADR-28）。専用 env `m5stack-stopwatch-riftbound` は廃止された。メニューには `Switch Game` が追加されている（SetLife は引き続き選択対象外）。本書のゲーム仕様（得点制・勝利点 8・1v1）は変更されていない。
 
 M5Stack StopWatch Dev Kit 上で動作する **Riftbound**（League of Legends TCG, Riot Games / UVS Games）Duel（1 対 1）向け得点カウンター **for Riftbound** の仕様を定義する。
 

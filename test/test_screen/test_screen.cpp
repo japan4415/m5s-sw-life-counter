@@ -4,7 +4,9 @@
 // NewGame 統合（issue #15）後のメニュー構成・画面遷移を検証する。
 // Swap Sides 削除（issue #16）後、kMenuItemCount は 5 に変更された。
 // Sensitivity 追加（issue #38）後、kMenuItemCount は 6 に変更された。
-// メニュー構成: Resume=0, History=1, SetLife=2, SetSensitivity=3, Rematch=4, About=5
+// 統合ファームウェア（docs/17）で SwitchGame を追加し、7 に変更された。
+// メニュー構成: Resume=0, History=1, SetLife=2, SetSensitivity=3, Rematch=4,
+//               About=5, SwitchGame=6
 
 #include <unity.h>
 #include <cstdint>
@@ -25,12 +27,12 @@ void tearDown(void) {
 }
 
 // ========================================================================
-// 1. kMenuItemCount の回帰テスト（issue #38: Sensitivity 追加後は 6）
+// 1. kMenuItemCount の回帰テスト（統合ファームウェア: SwitchGame 追加後は 7）
 // ========================================================================
 
-// kMenuItemCount が 6 であること（Sensitivity 追加前は 5 だった）
-void test_menu_item_count_is_6(void) {
-    TEST_ASSERT_EQUAL_UINT8(6, kMenuItemCount);
+// kMenuItemCount が 7 であること（SwitchGame 追加前は 6 だった）
+void test_menu_item_count_is_7(void) {
+    TEST_ASSERT_EQUAL_UINT8(7, kMenuItemCount);
 }
 
 // ========================================================================
@@ -60,17 +62,17 @@ void test_menu_index_increments_through_all_items(void) {
     }
 }
 
-// インデックス 5（最後の項目）で onNext() を呼ぶと 0 に戻ること
+// インデックス 6（最後の項目）で onNext() を呼ぶと 0 に戻ること
 void test_menu_index_wraps_around_to_zero(void) {
     // Active → Menu を開く
     ss.enterActive();
     ss.onCloseMenu();
 
-    // インデックスを 5（最後）まで進める
+    // インデックスを最後（kMenuItemCount - 1）まで進める
     for (uint8_t i = 0; i < kMenuItemCount - 1; ++i) {
         ss.onNext();
     }
-    TEST_ASSERT_EQUAL_UINT8(5, ss.menuIndex());
+    TEST_ASSERT_EQUAL_UINT8(kMenuItemCount - 1, ss.menuIndex());
 
     // もう一回 onNext() → 0 に戻る
     ss.onNext();
@@ -293,6 +295,37 @@ void test_select_about_goes_to_about_screen(void) {
                           static_cast<int>(ss.screen()));
 }
 
+// SwitchGame（インデックス 6）: 選択すると確認待ちになり、None を返す
+void test_select_switch_game_enters_confirm(void) {
+    openMenuAndMoveTo(6);
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(MenuItem::SwitchGame),
+                          static_cast<int>(ss.menuItem()));
+
+    ScreenAction action = ss.onSelect();
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(ScreenAction::None),
+                          static_cast<int>(action));
+    TEST_ASSERT_TRUE(ss.awaitingConfirm());
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(MenuItem::SwitchGame),
+                          static_cast<int>(ss.confirmTarget()));
+    // 画面は Menu のままであること（遷移は長押し確定時）
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(Screen::Menu),
+                          static_cast<int>(ss.screen()));
+}
+
+// SwitchGame 確認待ちで長押し → SwitchGame アクションが返る
+// Active には遷移しない（アプリ層が AppLauncher へ処理を譲るため）
+void test_confirm_switch_game_returns_switch_game_action(void) {
+    openMenuAndMoveTo(6);
+    ss.onSelect();  // 確認待ちに入る
+
+    ScreenAction action = ss.onLongPressB();
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(ScreenAction::SwitchGame),
+                          static_cast<int>(action));
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(Screen::Menu),
+                          static_cast<int>(ss.screen()));
+    TEST_ASSERT_FALSE(ss.awaitingConfirm());
+}
+
 // ========================================================================
 // 4. Setup → Active への遷移
 // ========================================================================
@@ -513,7 +546,7 @@ int main(int argc, char** argv) {
     UNITY_BEGIN();
 
     // 1. kMenuItemCount の回帰テスト
-    RUN_TEST(test_menu_item_count_is_6);
+    RUN_TEST(test_menu_item_count_is_7);
 
     // 2. メニューインデックスの循環
     RUN_TEST(test_menu_index_initial_is_zero);
@@ -535,6 +568,8 @@ int main(int argc, char** argv) {
     RUN_TEST(test_select_rematch_enters_confirm);
     RUN_TEST(test_confirm_rematch_returns_rematch_action);
     RUN_TEST(test_select_about_goes_to_about_screen);
+    RUN_TEST(test_select_switch_game_enters_confirm);
+    RUN_TEST(test_confirm_switch_game_returns_switch_game_action);
 
     // 4. Setup -> Active への遷移
     RUN_TEST(test_initial_screen_is_setup);

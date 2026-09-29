@@ -107,7 +107,7 @@ void test_menu_cycle_skips_set_life_forward(void) {
     TEST_ASSERT_NOT_EQUAL(MenuItem::SetLife, sc.menuItem());
 }
 
-// About の次は SetLife を経由せず Resume へ戻る（循環）
+// About の次は SwitchGame、その次は SetLife を経由せず Resume へ戻る（循環）
 void test_menu_cycle_skips_set_life_wrap_around(void) {
     sc.onLongPressB();
     sc.consumeDirty();
@@ -117,6 +117,8 @@ void test_menu_cycle_skips_set_life_wrap_around(void) {
     sc.onNext();                // Sensitivity
     sc.onNext();                // Rematch
     sc.onNext();                // About
+    sc.onNext();                // SwitchGame（統合ファームウェアで追加された項目）
+    TEST_ASSERT_EQUAL(MenuItem::SwitchGame, sc.menuItem());
     sc.onNext();                // SetLife をスキップして Resume へ
     TEST_ASSERT_EQUAL(MenuItem::Resume, sc.menuItem());
 }
@@ -207,7 +209,8 @@ void test_rematch_requires_long_press_confirm(void) {
     TEST_ASSERT_FALSE(sc.awaitingConfirm());
 
     // もう一度 Rematch を選んで確認待ちにし、B 長押しで確定
-    sc.onNext();                // Resume（About から循環）
+    sc.onNext();                // SwitchGame（About から循環）
+    sc.onNext();                // Resume
     sc.onNext();                // History
     sc.onNext();                // Sensitivity（SetLife スキップ）
     sc.onNext();                // Rematch
@@ -217,6 +220,42 @@ void test_rematch_requires_long_press_confirm(void) {
     action = sc.onLongPressB();
     TEST_ASSERT_EQUAL(ScreenAction::Rematch, action);
     TEST_ASSERT_EQUAL(Screen::Active, sc.screen());
+}
+
+// SwitchGame: 選ぶと確認待ちになり、長押しで SwitchGame アクションを返す
+void test_switch_game_requires_long_press_confirm(void) {
+    sc.onLongPressB();          // Active
+    sc.consumeDirty();
+    sc.onCloseMenu();           // Menu, Resume
+    sc.onNext();                // History
+    sc.onNext();                // Sensitivity
+    sc.onNext();                // Rematch
+    sc.onNext();                // About
+    sc.onNext();                // SwitchGame
+
+    // B 短押し: 確認待ちになるだけで実行はしない
+    ScreenAction action = sc.onSelect();
+    TEST_ASSERT_EQUAL(ScreenAction::None, action);
+    TEST_ASSERT_TRUE(sc.awaitingConfirm());
+    TEST_ASSERT_EQUAL(MenuItem::SwitchGame, sc.confirmTarget());
+
+    // 確認待ちで A 短押し（カーソル移動）すると確認待ちが解除される
+    sc.onNext();
+    TEST_ASSERT_FALSE(sc.awaitingConfirm());
+
+    // もう一度 SwitchGame を選んで確認待ちにし、B 長押しで確定
+    sc.onNext();                // History
+    sc.onNext();                // Sensitivity（SetLife スキップ）
+    sc.onNext();                // Rematch
+    sc.onNext();                // About
+    sc.onNext();                // SwitchGame
+    sc.onSelect();
+    TEST_ASSERT_TRUE(sc.awaitingConfirm());
+
+    action = sc.onLongPressB();
+    TEST_ASSERT_EQUAL(ScreenAction::SwitchGame, action);
+    // Active には遷移しない（アプリ層が AppLauncher へ処理を譲るため）
+    TEST_ASSERT_EQUAL(Screen::Menu, sc.screen());
 }
 
 // ========================================================================
@@ -298,6 +337,7 @@ int main(int argc, char** argv) {
     RUN_TEST(test_select_sensitivity);
     RUN_TEST(test_select_about);
     RUN_TEST(test_rematch_requires_long_press_confirm);
+    RUN_TEST(test_switch_game_requires_long_press_confirm);
     RUN_TEST(test_sensitivity_preset_cycle);
     RUN_TEST(test_dirty_flag_is_one_shot);
     RUN_TEST(test_close_menu_from_menu_goes_active);

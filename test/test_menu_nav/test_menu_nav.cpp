@@ -3,7 +3,8 @@
 // MenuNav（FaB / EDH 共通のメニュー遷移コア）のホスト単体テスト。
 // Phase 3 共通化で ScreenState / EdhScreenState から抽出されたクラスの
 // 振る舞いを直接検証する。
-// メニュー構成: Resume=0, History=1, SetLife=2, SetSensitivity=3, Rematch=4, About=5
+// メニュー構成: Resume=0, History=1, SetLife=2, SetSensitivity=3, Rematch=4,
+//               About=5, SwitchGame=6（統合ファームウェアで追加）
 
 #include <unity.h>
 #include <cstdint>
@@ -153,6 +154,21 @@ void test_select_about_goes_to_about_screen(void) {
     TEST_ASSERT_EQUAL_INT(static_cast<int>(ScreenAction::None),
                           static_cast<int>(action));
     TEST_ASSERT_EQUAL_INT(static_cast<int>(Screen::About),
+                          static_cast<int>(nav.screen()));
+}
+
+// SwitchGame（6）: 確認待ちに入り、confirmTarget が SwitchGame になる
+// （遷移はバリアント側 onLongPressB の確定時。MenuNav は確認待ちのみ行う）
+void test_select_switch_game_enters_confirm(void) {
+    openMenuAndMoveTo(kMenuItemCount - 1);
+    ScreenAction action = nav.onSelect();
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(ScreenAction::None),
+                          static_cast<int>(action));
+    TEST_ASSERT_TRUE(nav.awaitingConfirm());
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(MenuItem::SwitchGame),
+                          static_cast<int>(nav.confirmTarget()));
+    // 画面は Menu のままであること
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(Screen::Menu),
                           static_cast<int>(nav.screen()));
 }
 
@@ -403,6 +419,7 @@ int main(int argc, char** argv) {
     RUN_TEST(test_select_set_sensitivity_goes_to_sensitivity_screen);
     RUN_TEST(test_select_rematch_enters_confirm);
     RUN_TEST(test_select_about_goes_to_about_screen);
+    RUN_TEST(test_select_switch_game_enters_confirm);
     RUN_TEST(test_select_on_setup_does_nothing);
     RUN_TEST(test_select_on_active_does_nothing);
 

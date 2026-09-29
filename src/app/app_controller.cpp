@@ -644,9 +644,27 @@ void AppController::executeScreenAction(ScreenAction action) {
         storage_.save(state_);
         break;
 
+    case ScreenAction::SwitchGame:
+        // メニューの Switch Game 確定。AppLauncher へゲーム切替を要求する。
+        // 状態は既に NVS へ保存済み（確定・Undo のたびに save される）であり、
+        // ここでは要求フラグを立てるだけである。フラグは AppLauncher が
+        // consumeSwitchRequested() で消費し、ゲーム選択画面へ戻る。
+        switchRequested_ = true;
+        break;
+
     case ScreenAction::None:
         break;
     }
+}
+
+// ============================================================
+// consumeSwitchRequested — ゲーム切替要求の取得（消費型）
+// ============================================================
+
+bool AppController::consumeSwitchRequested() {
+    const bool requested = switchRequested_;
+    switchRequested_ = false;
+    return requested;
 }
 
 // ============================================================
