@@ -32,7 +32,14 @@ const currentVariant: FirmwareVariant = detectVariant() ?? "fab";
 
 /** バリアントに応じたファームウェアファイル名を返す */
 function firmwareFileName(variant: FirmwareVariant): string {
-  return variant === "edh" ? "firmware-edh.bin" : "firmware.bin";
+  switch (variant) {
+    case "edh":
+      return "firmware-edh.bin";
+    case "riftbound":
+      return "firmware-riftbound.bin";
+    default:
+      return "firmware.bin";
+  }
 }
 
 // ---- 書き込み構成（docs/14-web-flasher-design.md §2・§5） ----
@@ -191,18 +198,20 @@ async function loadReleases() {
   }
 
   // 対応ファームウェアをアセットに含むリリースのみ表示する
-  // FaB: firmware.bin を含むリリース / EDH: firmware-edh.bin を含むリリース
+  // FaB: firmware.bin / EDH: firmware-edh.bin / Riftbound: firmware-riftbound.bin
   releases = releases.filter((r) =>
     r.assets.some((a) => a.name === FIRMWARE_BIN_NAME),
   );
 
   if (releases.length === 0) {
     const empty = document.createElement("p");
-    empty.className = currentVariant === "edh" ? "info-box" : "warn-box";
+    empty.className = currentVariant === "fab" ? "warn-box" : "info-box";
     empty.textContent =
       currentVariant === "edh"
         ? "EDH ファームウェアはまだ公開されていません。リリースが公開されると、ここにバージョン一覧が表示されます。"
-        : "リリースがまだありません。初回セットアップはリポジトリの CI で v* タグの Release を作成する必要があります。";
+        : currentVariant === "riftbound"
+          ? "Riftbound ファームウェアはまだ公開されていません。リリースが公開されると、ここにバージョン一覧が表示されます。"
+          : "リリースがまだありません。初回セットアップはリポジトリの CI で v* タグの Release を作成する必要があります。";
     list.appendChild(empty);
     return;
   }
