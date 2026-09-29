@@ -14,6 +14,7 @@
 #include "domain/edh_match_state.hpp"
 #include "domain/edh_life_change.hpp"
 #include "app/edh_screen_state.hpp"
+#include "app/i_app_controller.hpp"
 #include "input/button_input.hpp"
 #include "input/gesture_detector.hpp"
 #include "infra/haptics_m5.hpp"
@@ -22,13 +23,16 @@
 
 namespace counter::app {
 
-class EdhAppController {
+class EdhAppController : public IAppController {
 public:
-    void begin();
+    void begin() override;
 
     /// メインループから毎フレーム呼ばれる。
-    /// nowMs は main_edh.cpp の millis() から渡される値。
-    void update(uint32_t nowMs);
+    /// nowMs は main.cpp の millis() から渡される値。
+    void update(uint32_t nowMs) override;
+
+    /// メニューの Switch Game によるゲーム切替要求を消費型で返す。
+    bool consumeSwitchRequested() override;
 
 private:
     edh::MatchState state_{};
@@ -38,6 +42,11 @@ private:
     ui::EdhRenderer renderer_;
     infra::Haptics haptics_;
     infra::EdhStorageNvs storage_;
+
+    // --- メニューからのゲーム切替要求（AppLauncher への通知） ---
+    // ScreenAction::SwitchGame を受けたときに立ち、AppLauncher が
+    // consumeSwitchRequested() で消費する。
+    bool switchRequested_ = false;
 
     // --- タッチ状態の検出 ---
     bool prevTouching_ = false;

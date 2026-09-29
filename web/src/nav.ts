@@ -1,13 +1,13 @@
 /**
  * 共通ナビゲーション: 全ページに挿入されるヘッダーナビ
  *
- * バリアント対応: URL パス（/fab/* または /edh/*）からバリアントを判定し、
+ * バリアント対応: URL パス（/fab/*、/edh/*、/riftbound/*）からバリアントを判定し、
  * ナビリンクをバリアントに応じて出し分ける。トップページ（/）ではバリアント
  * 非依存のリンクを表示する。
  */
 
 /** ファームウェアバリアント */
-export type FirmwareVariant = "fab" | "edh";
+export type FirmwareVariant = "fab" | "edh" | "riftbound";
 
 interface NavItem {
   label: string;
@@ -19,12 +19,14 @@ export function detectVariant(): FirmwareVariant | null {
   const path = location.pathname;
   if (path.startsWith("/fab/") || path === "/fab") return "fab";
   if (path.startsWith("/edh/") || path === "/edh") return "edh";
+  if (path.startsWith("/riftbound/") || path === "/riftbound") return "riftbound";
   return null;
 }
 
 const VARIANT_LABELS: Record<FirmwareVariant, string> = {
   fab: "for FaB",
   edh: "for MTG EDH",
+  riftbound: "for Riftbound",
 };
 
 function buildNavItems(variant: FirmwareVariant | null): NavItem[] {
@@ -75,12 +77,14 @@ function initNav(): void {
     labelSpan.textContent = VARIANT_LABELS[variant];
     variantEl.appendChild(labelSpan);
 
-    const otherVariant: FirmwareVariant = variant === "fab" ? "edh" : "fab";
+    // 切り替えはトップページ（バリアント選択）へ誘導する。
+    // バリアントが 3 つになったため、2 値前提の直接切替リンクではなく
+    // 選択ページ経由とする。
     const switchLink = document.createElement("a");
     switchLink.href = "/";
     switchLink.className = "nav-variant-switch";
     switchLink.textContent = "切替";
-    switchLink.title = `${VARIANT_LABELS[otherVariant]} に切り替え`;
+    switchLink.title = "バリアントを選び直す";
     variantEl.appendChild(switchLink);
 
     inner.appendChild(variantEl);

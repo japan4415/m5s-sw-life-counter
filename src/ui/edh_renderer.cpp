@@ -518,7 +518,8 @@ void EdhRenderer::drawMenu(const edh::app::EdhScreenState& sc,
     drawBatteryIcon(target, batteryPercent, charging);
 
     static constexpr const char* kItemNames[] = {
-        "Resume", "History", "Set Life", "Sensitivity", "Rematch", "About"
+        "Resume", "History", "Set Life", "Sensitivity", "Rematch", "About",
+        "Switch Game"
     };
 
     target->setTextDatum(middle_center);

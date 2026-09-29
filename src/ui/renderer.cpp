@@ -551,9 +551,11 @@ void Renderer::drawMenu(const app::ScreenState& sc,
     // --- メニュー項目の描画 ---
     // 項目名は英語。docs/05-ui-ux.md のメニュー定義に準拠する。
     // MenuItem 列挙と同じ順序で並べる:
-    //   Resume(0), History(1), SetLife(2), SetSensitivity(3), Rematch(4), About(5)
+    //   Resume(0), History(1), SetLife(2), SetSensitivity(3), Rematch(4),
+    //   About(5), SwitchGame(6)
     static constexpr const char* kItemNames[] = {
-        "Resume", "History", "Set Life", "Sensitivity", "Rematch", "About"
+        "Resume", "History", "Set Life", "Sensitivity", "Rematch", "About",
+        "Switch Game"
     };
     static_assert(
         sizeof(kItemNames) / sizeof(kItemNames[0]) == app::kMenuItemCount,

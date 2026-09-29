@@ -85,8 +85,8 @@ static void openMenuAndMoveTo(uint8_t targetIndex) {
     }
 }
 
-void test_menu_item_count_is_6(void) {
-    TEST_ASSERT_EQUAL_UINT8(6, kMenuItemCount);
+void test_menu_item_count_is_7(void) {
+    TEST_ASSERT_EQUAL_UINT8(7, kMenuItemCount);
 }
 
 void test_menu_index_wraps(void) {
@@ -594,7 +594,7 @@ int main(int argc, char** argv) {
     RUN_TEST(test_setup_next_toggles_life);
 
     // メニュー
-    RUN_TEST(test_menu_item_count_is_6);
+    RUN_TEST(test_menu_item_count_is_7);
     RUN_TEST(test_menu_index_wraps);
     RUN_TEST(test_select_resume);
     RUN_TEST(test_select_history);
