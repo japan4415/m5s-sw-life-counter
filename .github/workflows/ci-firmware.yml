@@ -63,5 +63,8 @@ jobs:
       - name: Build firmware (EDH)
         run: pio run -e m5stack-stopwatch-edh
 
+      - name: Build firmware (Riftbound)
+        run: pio run -e m5stack-stopwatch-riftbound
+
       - name: Run native tests
         run: pio test -e native
