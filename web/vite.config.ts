@@ -78,6 +78,10 @@ export default defineConfig({
         edhInstall: resolve(__dirname, "edh/install/index.html"),
         edhGuide: resolve(__dirname, "edh/guide/index.html"),
         edhFeatures: resolve(__dirname, "edh/features/index.html"),
+        // Riftbound バリアント
+        riftboundInstall: resolve(__dirname, "riftbound/install/index.html"),
+        riftboundGuide: resolve(__dirname, "riftbound/guide/index.html"),
+        riftboundFeatures: resolve(__dirname, "riftbound/features/index.html"),
         // 404
         notFound: resolve(__dirname, "404.html"),
       },

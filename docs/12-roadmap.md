@@ -234,18 +234,53 @@ Phase 0 が完了するまで Phase 1 以降の実装パラメータが確定し
 
 ## for MTG EDH バリアント
 
-上記 Phase 0〜5 は **for FaB** バリアントのロードマップである。**for MTG EDH** バリアントは独立した実装として並行開発しており、現在の状態は以下のとおり。
+上記 Phase 0〜5 は **for FaB** バリアントのロードマップである。**for MTG EDH** バリアントは独立した実装として並行開発しており、現在の状態は以下のとおり。統合ファームウェア移行後（ADR-28）は、この内容が単一バイナリのゲームモードとして収録されている。
 
 | 項目 | 状態 |
 |------|------|
 | 仕様策定 | 完了（[docs/15-edh-firmware-spec.md](./15-edh-firmware-spec.md)） |
 | ドメイン・タッチ判定・画面状態機械の実装 | 完了（`lib/edh_core/`、`src/`） |
 | ホストテスト | 71 件全通過（ドメイン 24 / タッチ 17 / 画面状態 30） |
-| ビルド | `pio run -e m5stack-stopwatch-edh` で成功 |
-| 実機検証 | **未実施**（4 扇形の回転描画性能、タッチ判定しきい値、色の見え方は実機調整前提） |
-| リリース | **未リリース** |
+| ビルド | 統合 env `m5stack-stopwatch` に収録（専用 env `m5stack-stopwatch-edh` は廃止） |
+| 実機検証 | **基本動作は実機確認済み**（回転描画性能・視認性の作り込みは今後の課題） |
+| リリース | v0.1.0 として同梱済み |
 
 for FaB の Phase 0 で確定した実測値（画面解像度、タッチ座標、描画レート等）を共有し、共通資産（ジェスチャー判定、ボタン状態機械、NVS 永続化方式、振動フィードバック、感度設定）を再利用している。
+
+---
+
+## for Riftbound バリアント
+
+**for Riftbound** バリアント（Riftbound / League of Legends TCG の Duel 向け得点カウンター）も独立した実装として開発した。Riftbound はライフ制ではなくバトルフィールド制圧による得点制であり、カウント対象は各プレイヤーの得点（勝利点 8）である。統合ファームウェア移行後（ADR-28）は、この内容が単一バイナリのゲームモードとして収録されている。現在の状態は以下のとおり。
+
+| 項目 | 状態 |
+|------|------|
+| 仕様策定 | 完了（[docs/16-riftbound-firmware-spec.md](./16-riftbound-firmware-spec.md)） |
+| ドメイン・画面状態機械の実装 | 完了（`lib/riftbound_core/`、`src/`） |
+| ホストテスト | 37 件全通過（ドメイン 18 / 画面状態 19） |
+| ビルド | 統合 env `m5stack-stopwatch` に収録（専用 env `m5stack-stopwatch-riftbound` は廃止） |
+| Web Flasher | ゲーム別案内ページ `/riftbound/*` を提供（書き込むのは統合 `firmware.bin`） |
+| 実機検証 | **未実施**（テーマ色の見え方、Setup 画面の視認性は実機調整前提） |
+| リリース | **未リリース**（統合ファームウェアの次回 v* タグから同梱） |
+
+---
+
+## 統合ファームウェア
+
+上記 3 バリアント（for FaB / for MTG EDH / for Riftbound）を単一バイナリに統合した（[ADR-28](./13-decisions.md#adr-28-3-バリアントを単一ファームウェアに統合する)）。現在の状態は以下のとおり。
+
+| 項目 | 状態 |
+|------|------|
+| 仕様策定 | 完了（[docs/17-unified-firmware-spec.md](./17-unified-firmware-spec.md)） |
+| 実装 | 完了（`AppLauncher` / `IAppController` / `ModeStore` / メニュー `SwitchGame`） |
+| ホストテスト | 311 件全通過（MenuNav / FaB / EDH / Riftbound の SwitchGame 追加分を含む） |
+| ビルド | `pio run -e m5stack-stopwatch` で成功。アプリイメージ 566,601 バイト（アプリパーティションの 8.6%）、静的 DRAM 37,288 バイト（11.4%） |
+| リリース / Web Flasher | `firmware.bin` 1 本に一本化（`firmware-edh.bin` / `firmware-riftbound.bin` は廃止） |
+| 実機検証 | **未実施**（ゲーム選択画面の操作、モード切替、モードを跨いだ NVS 復元） |
+
+---
+
+for FaB / EDH と同様に、Phase 0 で確定した実測値と共通資産（ジェスチャー判定、ボタン状態機械、MenuNav、NVS 永続化方式、振動フィードバック、感度設定）を再利用している。1v1 のため画面レイアウトは for FaB 版の上下 2 分割をそのまま流用し、差分はドメイン（得点制）・メニュー（Set Life なし）・テーマ（勝利点到達警告）に集約される。
 
 ---
 

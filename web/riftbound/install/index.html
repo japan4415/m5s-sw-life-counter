@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="M5Stack StopWatch (ESP32-S3) への MTG EDH ファームウェア書き込みツール" />
-    <title>インストール (EDH) - M5Stack StopWatch ライフカウンター</title>
+    <meta name="description" content="M5Stack StopWatch (ESP32-S3) への Riftbound 得点カウンターファームウェア書き込みツール" />
+    <title>インストール (Riftbound) - M5Stack StopWatch ライフカウンター</title>
   </head>
   <body>
     <nav id="global-nav"></nav>
@@ -13,12 +13,12 @@
         <div class="app-logo" aria-hidden="true"><span class="logo-dot"></span></div>
         <div>
           <h1>M5Stack StopWatch ファームウェア書き込み</h1>
-          <p class="app-subtitle">統合ファームウェアのインストール・更新（for MTG EDH / ESP32-S3 / Web Serial）</p>
+          <p class="app-subtitle">統合ファームウェアのインストール・更新（for Riftbound / ESP32-S3 / Web Serial）</p>
         </div>
       </header>
 
       <div class="info-box">
-        <strong>お知らせ:</strong> このファームウェアは FaB / MTG EDH / Riftbound の 3 ゲームモードを 1 本に収めた<strong>統合ファームウェア</strong>です。ゲームの切り替えは起動時のゲーム選択画面、またはメニューの「Switch Game」で行えます（各ゲームの対戦状態は個別に保存されます）。EDH モードは初版（v0.1.0）で、基本動作は実機で確認済みですが検証は限定的です。
+        <strong>お知らせ:</strong> このファームウェアは FaB / MTG EDH / Riftbound の 3 ゲームモードを 1 本に収めた<strong>統合ファームウェア</strong>です。ゲームの切り替えは起動時のゲーム選択画面、またはメニューの「Switch Game」で行えます（各ゲームの対戦状態は個別に保存されます）。Riftbound モードは初版（v0.1.0）で、実機での動作検証はこれからです。
       </div>
 
       <ol class="stepper" aria-label="ウィザードの進捗">
@@ -210,7 +210,7 @@
             <div class="device-circle" aria-hidden="true"></div>
             <ol class="device-steps">
               <li><strong>電源ボタンを短押し</strong>してデバイスを起動してください</li>
-              <li>画面にライフカウンターが表示されることを確認してください</li>
+              <li>画面にスコアカウンターが表示されることを確認してください</li>
               <li>About 画面のバージョンが <span id="done-version" class="chip-release"></span> と一致することを確認してください</li>
               <li>電源を切るときは、電源ボタンを<strong>素早く 2 回押し</strong>してください（長押しはダウンロードモードに入るため使わないでください）</li>
             </ol>

@@ -57,11 +57,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      - name: Build firmware (FaB)
+      - name: Build unified firmware (FaB / EDH / Riftbound)
         run: pio run -e m5stack-stopwatch
-
-      - name: Build firmware (EDH)
-        run: pio run -e m5stack-stopwatch-edh
 
       - name: Run native tests
         run: pio test -e native
