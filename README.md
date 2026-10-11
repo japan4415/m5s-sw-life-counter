@@ -9,10 +9,11 @@ M5Stack StopWatch Dev Kit (ESP32-S3) 上で動作する、Flesh and Blood (FaB) 
 |---|---|---|
 | **for FaB** | v1.2.0 | リリース済み |
 | **for MTG EDH** | v0.1.0 | 初版リリース（実機での基本動作は確認済みだが、検証は限定的） |
+| **for Riftbound** | v0.1.0 | 初版実装（実機検証は未実施） |
 
 ## ステータス
 
-**ファームウェア v1.2.0 リリース済み** -- [Web Flasher](https://m5s-sw-life-counter.discord.jp/install) からブラウザ経由でインストールできる。MTG 統率者戦（EDH）向けバリアントも初版 v0.1.0 を同梱している（[仕様](docs/15-edh-firmware-spec.md)）。
+**ファームウェア v1.2.0 リリース済み** -- [Web Flasher](https://m5s-sw-life-counter.discord.jp/install) からブラウザ経由でインストールできる。MTG 統率者戦（EDH）向けバリアント v0.1.0 と、Riftbound（League of Legends TCG）Duel 向け得点カウンターバリアント v0.1.0 を同梱している（[EDH 仕様](docs/15-edh-firmware-spec.md) / [Riftbound 仕様](docs/16-riftbound-firmware-spec.md)）。
 
 ## 主要な特徴
 
@@ -45,6 +46,9 @@ pio run -t upload -t monitor
 
 # for MTG EDH（初版リリース済み）
 pio run -e m5stack-stopwatch-edh -t upload -t monitor
+
+# for Riftbound（初版実装・実機検証待ち）
+pio run -e m5stack-stopwatch-riftbound -t upload -t monitor
 ```
 
 > **注意**: 書き込み完了後、デバイスが自動起動しない場合がある（`Hard resetting via RTS pin` だけでは起動しないことがある）。その場合は電源ボタンを短押ししてリセットすること。電源を切るときは電源ボタンを**素早く 2 回押し**する（長押しはダウンロードモードに入るため使わない）。
@@ -76,6 +80,7 @@ pio run -t upload --upload-port /dev/cu.usbmodem<実際のポート番号>
 | [docs/12-roadmap.md](docs/12-roadmap.md) | 実装ロードマップ |
 | [docs/13-decisions.md](docs/13-decisions.md) | 技術選定記録と未解決事項 |
 | [docs/15-edh-firmware-spec.md](docs/15-edh-firmware-spec.md) | MTG EDH（統率者戦）ファームウェア仕様 |
+| [docs/16-riftbound-firmware-spec.md](docs/16-riftbound-firmware-spec.md) | Riftbound（1v1 得点カウンター）ファームウェア仕様 |
 
 **読み進め方**:
 

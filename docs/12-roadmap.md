@@ -249,6 +249,24 @@ for FaB の Phase 0 で確定した実測値（画面解像度、タッチ座標
 
 ---
 
+## for Riftbound バリアント
+
+**for Riftbound** バリアント（Riftbound / League of Legends TCG の Duel 向け得点カウンター）も独立した実装として並行開発する。Riftbound はライフ制ではなくバトルフィールド制圧による得点制であり、カウント対象は各プレイヤーの得点（勝利点 8）である。現在の状態は以下のとおり。
+
+| 項目 | 状態 |
+|------|------|
+| 仕様策定 | 完了（[docs/16-riftbound-firmware-spec.md](./16-riftbound-firmware-spec.md)） |
+| ドメイン・画面状態機械の実装 | 完了（`lib/riftbound_core/`、`src/`） |
+| ホストテスト | 37 件全通過（ドメイン 18 / 画面状態 19） |
+| ビルド | `pio run -e m5stack-stopwatch-riftbound` で成功 |
+| Web Flasher | `/riftbound/install` を追加済み（リリースアセット `firmware-riftbound.bin` は次回 v* タグから同梱） |
+| 実機検証 | **未実施**（テーマ色の見え方、Setup 画面の視認性は実機調整前提） |
+| リリース | **未リリース** |
+
+for FaB / EDH と同様に、Phase 0 で確定した実測値と共通資産（ジェスチャー判定、ボタン状態機械、MenuNav、NVS 永続化方式、振動フィードバック、感度設定）を再利用している。1v1 のため画面レイアウトは for FaB 版の上下 2 分割をそのまま流用し、差分はドメイン（得点制）・メニュー（Set Life なし）・テーマ（勝利点到達警告）に集約される。
+
+---
+
 ## 並行して進められる作業
 
 実機到着前・実機不要な作業として、以下を Phase 0 と並行して進めることができる。
