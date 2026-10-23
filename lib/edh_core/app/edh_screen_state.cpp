@@ -167,6 +167,12 @@ ScreenAction EdhScreenState::onLongPressB() {
             resetViewStates();
             return ScreenAction::Rematch;
         }
+        if (nav_.confirmTarget() == MenuItem::SwitchGame) {
+            // ゲーム選択画面へ戻る。Active には遷移しない --
+            // アプリ層が AppLauncher へ処理を譲り、このコントローラは
+            // 停止する（ScreenAction::SwitchGame を参照）。
+            return ScreenAction::SwitchGame;
+        }
         return ScreenAction::None;
 
     default:

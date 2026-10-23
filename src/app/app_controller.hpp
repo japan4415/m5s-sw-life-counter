@@ -12,6 +12,7 @@
 // domain / input / ui / infra の各層を統合する。
 
 #include "app/screen_state.hpp"
+#include "app/i_app_controller.hpp"
 #include "domain/match_state.hpp"
 #include "input/button_input.hpp"
 #include "input/gesture_detector.hpp"
@@ -21,14 +22,17 @@
 
 namespace counter::app {
 
-class AppController {
+class AppController : public IAppController {
 public:
-    void begin();
+    void begin() override;
 
     /// メインループから毎フレーム呼ばれる。
     /// nowMs は main.cpp の millis() から渡される値。
     /// 内部で millis() を呼ばないことで、時刻源を main に集約する。
-    void update(uint32_t nowMs);
+    void update(uint32_t nowMs) override;
+
+    /// メニューの Switch Game によるゲーム切替要求を消費型で返す。
+    bool consumeSwitchRequested() override;
 
 private:
     domain::MatchState state_{};
@@ -38,6 +42,11 @@ private:
     ui::Renderer renderer_;
     infra::Haptics haptics_;
     infra::StorageNvs storage_;
+
+    // --- メニューからのゲーム切替要求（AppLauncher への通知） ---
+    // ScreenAction::SwitchGame を受けたときに立ち、AppLauncher が
+    // consumeSwitchRequested() で消費する。
+    bool switchRequested_ = false;
 
     // --- タッチ状態の立ち上がり／立ち下がり検出 ---
     // 前フレームの押下状態と座標を保持し、エッジ検出に使う。

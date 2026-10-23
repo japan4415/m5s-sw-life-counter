@@ -36,6 +36,15 @@ void Haptics::begin() {
     // M5.begin() が M5IOE1 の PWM 設定（GPIO9 の 12bit PWM）を
     // 含む全ハードウェアの初期化を済ませるため、ここでの追加初期化は不要。
     // setVibration(0) も不要: M5.begin() 直後はモーター停止状態。
+    //
+    // ただし統合ファームウェア（docs/17）のモード切替では、切替直前の
+    // パルスが残ったまま当インスタンスの tick() が呼ばれなくなることがある
+    // （AppLauncher がモーター自体は setVibration(0) で停止するが、
+    // 当インスタンスの active_ フラグは残る）。再 begin() 時に状態を
+    // リセットし、復帰後の pulse() の継続判定が不正にならないようにする。
+    active_     = false;
+    durationMs_ = 0;
+    stepCount_  = 0;
 }
 
 void Haptics::pulse(uint32_t durationMs) {
